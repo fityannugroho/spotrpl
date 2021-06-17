@@ -1,0 +1,76 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.field label {
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.field input {
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--pure-white);
+    border-radius: 4px;
+    font-size: 1.4rem;
+    resize: vertical;
+}
+
+.field input:focus {
+    outline: none;
+    box-shadow: 0 0 1px 2px var(--primary-color);
+}
+
+.password-field {
+    display: flex;
+    align-items: center;
+}
+
+.password-field > input {
+    width: 100%;
+    padding-right: 4rem;
+}
+
+.password-toggle {
+    margin-left: -4rem;
+}
+
+.password-toggle > i {
+    height: min-content;
+    background-color: #ffffff;
+}
+
+.alert-message {
+    display: none;
+}
+
+.alert-message.show {
+    display: block;
+    color: #ff0000;
+    font-size: 1.4rem;
+}
+
+.alert-message.show.valid {
+    display: block;
+    color: #008000;
+    font-size: 1.4rem;
+}
+
+.btn-submit:disabled {
+    background-color: #e2e2e2;
+    color: #a09f9f;
+    cursor: not-allowed;
+}
+
+.btn-submit:enabled {
+    color: var(--pure-white);
+    background-color: var(--primary-color);
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-submit:enabled:active {
+    background-color: var(--secondary-color);
+}

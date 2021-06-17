@@ -1,0 +1,32 @@
+.question {
+    padding: 1.8rem;
+    margin-bottom: 1.6rem;
+}
+
+.question-header {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.question-body img {
+    max-width: 40rem;
+}
+
+.question-body .answer-options {
+    margin-top: 1.50rem;
+}
+
+.answer-options .form-check {
+    margin-bottom: 0.5rem;
+}
+
+.question-footer {
+    margin-top: 1.6rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.question-footer .slider-help {
+    display: flex;
+    justify-content: space-between;
+}

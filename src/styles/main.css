@@ -1,0 +1,14 @@
+.title {
+    color: var(--yellow-upi);
+}
+
+#banner {
+    padding: 3rem;
+    background-color: var(--grey);
+    background-size: cover;
+}
+
+#banner img {
+    max-height: 20rem;
+    max-width: 100%;
+}

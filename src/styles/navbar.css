@@ -1,0 +1,212 @@
+nav {
+    width: 100%;
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    overflow-x: auto;
+
+    padding: 1.6rem 3.2rem;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background: var(--nav-color);
+    gap: 1.2rem;
+}
+
+.logo {
+    height: min-content;
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    margin: 0;
+    margin-right: 2.4rem;
+    user-select: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.logo-name {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    color: #ffffff;
+    gap: 0.2rem;
+}
+
+.logo-name > .name1 {
+    font-weight: bold;
+    font-size: 2.4rem;
+    line-height: 2.4rem;
+}
+
+.logo-name > .name2 {
+    font-weight: normal;
+    font-size: 1.2rem;
+    line-height: 1.6rem;
+}
+
+.main-menus {
+    display: flex;
+    justify-content: flex-start;
+    gap: 2.4rem;
+}
+
+.main-menus li {
+    list-style: none;
+}
+
+.main-menus li a {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.8rem;
+}
+
+.main-menus li a:hover {
+    text-decoration: underline;
+}
+
+.main-menus li a:active {
+    font-weight: bolder;
+}
+
+.burger-icon {
+    display: none;
+}
+
+.right-group {
+    width: min-content;
+    margin-left: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 0;
+}
+
+.profile-toggle {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.avatar {
+    vertical-align: middle;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+}
+
+.profile-box {
+    display: inline-flex;
+    flex-direction: column;
+    position: fixed !important;
+    max-width: 24rem;
+    top: 8rem;
+    right: 2rem;
+    padding: 1.6rem 2rem;
+    background-color: var(--nav-color);
+    gap: 1.6rem;
+    border-radius: 8px;
+    color: #ffffff;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.profile-content {
+    display: flex;
+    gap: 1.4rem;
+    align-items: center;
+}
+
+.profile-content img {
+    vertical-align: middle;
+    width: 6.4rem;
+    height: 6.4rem;
+    border-radius: 0.4rem;
+}
+
+.profile-content .info {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+
+.profile-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.profile-box.active {
+    opacity: 1;
+    visibility: visible;
+    transition: all 0.5s ease;
+}
+
+
+#logoutBtn {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* Tablet View */
+@media screen and (max-width: 768px) {
+    .main-menus {
+        position: fixed;
+        right: 0;
+        top: 7.2rem;
+        height: 92vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 30%;
+        padding: 2.4rem 0;
+        overflow-y: auto;
+        background-color: var(--nav-color);
+        transform: translate(100%);
+        transition: transform 0.4s ease-in;
+    }
+
+    .main-menus li {
+        opacity: 0;
+    }
+
+    .main-menus.active {
+        transform: translate(0);
+    }
+
+    .burger-icon {
+        display: block;
+    }
+}
+
+/* mobile view */
+@media screen and (max-width: 520px) {
+    .logo-name > .name2 {
+        display: none;
+    }
+
+    .main-menus {
+        width: 50%;
+    }
+}
+
+@keyframes mainMenusFade {
+    from {
+        opacity: 0;
+        transform: translate(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(0px);
+    }
+}

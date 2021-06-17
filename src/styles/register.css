@@ -1,0 +1,70 @@
+* {
+    box-sizing: border-box;
+}
+
+.selector {
+    display: inline-flex;
+    flex-direction: column;
+    color: #ffffff;
+    gap: 0.4rem;
+    font-size: 1.4rem;
+}
+
+.selector select {
+    padding: 4px 16px 4px 4px;
+    border: none;
+    background: #ffffff url('../assets/drop-down-arrow.png') no-repeat;
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+form {
+    margin-top: 2rem;
+}
+
+.container {
+    border-radius: 4px;
+    background-color: #f2f2f2;
+    padding: 24px;
+}
+
+.row {
+    display: flex;
+    margin-bottom: 1.4rem;
+    gap: 1.2rem;
+}
+
+.row.justify-end {
+    justify-content: flex-end;
+}
+
+.col-25 {
+    width: 25%;
+}
+
+.col-75 {
+    width: 75%;
+}
+
+button[type='submit'] {
+    background-color: #4caf50;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+@media screen and (max-width: 600px) {
+    .col-25,
+    .col-75,
+    button[type='submit'] {
+        width: 100%;
+    }
+
+    .row {
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+}

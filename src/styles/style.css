@@ -1,0 +1,83 @@
+:root {
+    /* variabel warna */
+    --primary-color: #17a2b8;
+    --secondary-color: #117a8b;
+    --grey: #eeeeee;
+    --light-grey: #fafafa;
+    --nav-color: #004170;
+    --yellow-upi: #e0a800;
+    --pure-white: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    font-family: 'Quicksand', Quicksand, sans-serif;
+}
+
+html {
+    font-size: 62.5%;
+    /* 62.5% * 16px = 10px, jadi sekarang 1.2rem = 12px */
+}
+
+body {
+    font-size: 1.6rem;
+}
+
+.btn {
+    padding: 0.8rem 1.6rem;
+    text-decoration: none;
+    font-size: 1.4rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    gap: 0.8rem;
+}
+
+.primary-btn {
+    border: 2px solid var(--primary-color);
+    background: var(--primary-color);
+    color: var(--pure-white);
+}
+
+.primary-btn:hover {
+    border: 2px solid var(--pure-white);
+}
+
+.primary-btn:active {
+    background: var(--secondary-color);
+}
+
+.secondary-btn {
+    border: 2px solid var(--pure-white);
+    background: inherit;
+    color: var(--grey);
+}
+
+.secondary-btn:hover {
+    color: #000000;
+    background: var(--light-grey);
+}
+
+.secondary-btn:active {
+    background: var(--grey);
+}
+
+.icon-btn {
+    display: inline-flex;
+    padding: 0.6rem;
+    background: inherit;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+i.material-icons, i.material-icons-outlined {
+    display: inline-block;
+    max-width: 2.4rem;
+    overflow: clip;
+    user-select: none;
+}
