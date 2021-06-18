@@ -308,7 +308,7 @@
 
 
     // mendapatkan data kelas dari mata kuliah ini
-    $klsResult = mysqli_query($conn, "SELECT * FROM Kelas WHERE mata_kuliah='$kodeMatkul'");
+    $klsResult = mysqli_query($conn, "SELECT * FROM Kelas WHERE mata_kuliah='$kodeMatkul' ORDER BY nama ASC");
 
     if ($klsResult === FALSE) {
         $_SESSION['alert'] = array(
