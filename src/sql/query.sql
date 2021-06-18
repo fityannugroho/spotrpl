@@ -664,6 +664,25 @@ END //
 DELIMITER ;
 
 
+--
+DELIMITER //
+CREATE FUNCTION IF NOT EXISTS has_exam_already_rated (
+    kode_ujian VARCHAR(8),
+    nim VARCHAR(7)
+)
+RETURNS BOOLEAN
+BEGIN
+    DECLARE is_rated BOOLEAN DEFAULT FALSE;
+
+    SELECT sudah_dinilai = 1 INTO is_rated
+    FROM Nilai_Ujian
+    WHERE ujian = kode_ujian AND mahasiswa = nim;
+
+    RETURN is_rated;
+END //
+DELIMITER ;
+
+
 -- Membuat TRIGGER untuk menambahkan (INSERT) data kehadiran pada tabel Kehadiran secara otomatis setelah adanya penambahan pada tabel Pertemuan
 DELIMITER //
 CREATE TRIGGER IF NOT EXISTS buat_presensi AFTER INSERT ON Pertemuan

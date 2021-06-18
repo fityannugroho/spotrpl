@@ -433,9 +433,15 @@
                                         <ul>
                                             <li><span><b><?=$soalPG['opsi_benar']?></b></span></li>
                                             <li><span><?=$soalPG['opsi_salah1']?></span></li>
-                                            <li><span><?=$soalPG['opsi_salah2']?></span></li>
-                                            <li><span><?=$soalPG['opsi_salah3']?></span></li>
-                                            <li><span><?=$soalPG['opsi_salah4']?></span></li>
+                                            <?php if (!empty($soalPG['opsi_salah2'])) : ?>
+                                                <li><span><?=$soalPG['opsi_salah2']?></span></li>
+                                            <?php endif; ?>
+                                            <?php if (!empty($soalPG['opsi_salah3'])) : ?>
+                                                <li><span><?=$soalPG['opsi_salah3']?></span></li>
+                                            <?php endif; ?>
+                                            <?php if (!empty($soalPG['opsi_salah4'])) : ?>
+                                                <li><span><?=$soalPG['opsi_salah4']?></span></li>
+                                            <?php endif; ?>
                                         </ul>
                                     </td>
                                 </tr>

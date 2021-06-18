@@ -211,7 +211,7 @@
         endif;
     ?>
     <main class="container-md p-4">
-        <?php if(isset($_SESSION['is_exam']) && $_SESSION['is_exam'] !== NULL) : ?>
+        <?php if(isset($_SESSION['is_exam']) && $_SESSION['is_exam'] === $ujian['kode_ujian']) : ?>
             <form action="./exam.php?kode=<?=$ujian['kode_ujian']?>" method="post">
                 <span>ID Sesi: <?=$_SESSION['is_exam']?></span>
                 <?php if (sizeof($listSoalPG) > 0) : ?>
@@ -255,7 +255,7 @@
                         <?php endforeach; ?>
                     </section>
                 <?php endif; ?>
-                <?php if ($listSoalEsai > 0) : ?>
+                <?php if (sizeof($listSoalEsai) > 0) : ?>
                     <section class="mb-4">
                         <h1 class="mb-4">Soal Esai</h1>
                         <?php $i = 1; ?>
@@ -389,7 +389,7 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batalkan</button>
                             <form action="./exam.php?kode=<?=$ujian['kode_ujian']?>" method="post">
-                                <input type="hidden" name="exam_session_id" value="<?=uniqid();?>">
+                                <input type="hidden" name="exam_session_id" value="<?=$ujian['kode_ujian'];?>">
                                 <button type="submit" name="start_exam" data-bs-toggle="modal" data-bs-target="#startExamConfirmDialog" class="btn btn-primary d-flex align-items-center justify-content-center gap-1">
                                     <span>Ya, Mulai Sekarang</span>
                                 </button>

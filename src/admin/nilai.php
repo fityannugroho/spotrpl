@@ -138,6 +138,11 @@
         exit;
     }
 
+
+    // mengecek apakah jawaban ujian ini sudah pernah dinilai atau belum
+    $has_rated = mysqli_query($conn, "SELECT has_exam_already_rated('$kodeUjian', '$nim') AS has_rated");
+    $has_rated = mysqli_fetch_row($has_rated)[0];
+
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
 
@@ -197,7 +202,11 @@
                     <th><?=$mhs['nama_lengkap']?></th>
                 </tr>
                 <tr>
-                    <td colspan="2">Silahkan berikan poin untuk jawaban esai pada ujian ini. Poin untuk jawaban pilihan ganda akan diberikan secara otomatis. Pastikan Anda menekan tombol <b>Simpan Penilaian Ujian</b> setelah memeriksa ujian ini.</td>
+                    <?php if ($has_rated) : ?>
+                        <td colspan="2">Anda sudah memberikan nilai untuk ujian ini.</td>
+                    <?php else : ?>
+                        <td colspan="2">Silahkan berikan poin untuk jawaban esai pada ujian ini. Poin untuk jawaban pilihan ganda akan diberikan secara otomatis. Pastikan Anda menekan tombol <b>Simpan Penilaian Ujian</b> setelah memeriksa ujian ini.</td>
+                    <?php endif; ?>
                 </tr>
             </table>
         </section>
@@ -289,12 +298,21 @@
                             </div>
                             <div class="question-footer">
                                 <label class="form-label" for="slider<?=$soalEsai['kode_soal']?>">Poin :</label>
-                                <input class="form-range" type="range" name="<?=$soalEsai['kode_soal']?>" id="slider<?=$soalEsai['kode_soal']?>" value="<?=$jwbEsai['poin']?>" min="<?=$soalEsai['poin_salah']?>" max="<?=$soalEsai['poin_benar']?>" step="0.5" oninput="out<?=$soalEsai['kode_soal']?>.value = parseFloat(slider<?=$soalEsai['kode_soal']?>.value) + ' poin'">
-                                <div class="slider-help">
-                                    <p><?=$soalEsai['poin_salah']?></p>
-                                    <b><output for="slider<?=$soalEsai['kode_soal']?>" id="out<?=$soalEsai['kode_soal']?>"></output></b>
-                                    <p><?=$soalEsai['poin_benar']?></p>
-                                </div>
+                                <?php if (!$has_rated) : ?>
+                                    <input class="form-range" type="range" name="<?=$soalEsai['kode_soal']?>" id="slider<?=$soalEsai['kode_soal']?>" value="<?=$jwbEsai['poin']?>" min="<?=$soalEsai['poin_salah']?>" max="<?=$soalEsai['poin_benar']?>" step="0.5" oninput="out<?=$soalEsai['kode_soal']?>.value = parseFloat(slider<?=$soalEsai['kode_soal']?>.value) + ' poin'">
+                                    <div class="slider-help">
+                                        <p><?=$soalEsai['poin_salah']?></p>
+                                        <b><output for="slider<?=$soalEsai['kode_soal']?>" id="out<?=$soalEsai['kode_soal']?>"></output></b>
+                                        <p><?=$soalEsai['poin_benar']?></p>
+                                    </div>
+                                <?php else : ?>
+                                    <input class="form-range" type="range" name="<?=$soalEsai['kode_soal']?>" id="slider<?=$soalEsai['kode_soal']?>" value="<?=$jwbEsai['poin']?>" min="<?=$soalEsai['poin_salah']?>" max="<?=$soalEsai['poin_benar']?>" step="0.5" disabled>
+                                    <div class="slider-help">
+                                        <p><?=$soalEsai['poin_salah']?></p>
+                                        <b><output for="slider<?=$soalEsai['kode_soal']?>" id="out<?=$soalEsai['kode_soal']?>"><?=$jwbEsai['poin']?> poin</output></b>
+                                        <p><?=$soalEsai['poin_benar']?></p>
+                                    </div>
+                                <?php endif; ?>
                                 <div class="form-text">Berikan nilai dengan cara menggeser slider di atas.</div>
                             </div>
                         </article>
@@ -303,10 +321,14 @@
                 </section>
             <?php endif; ?>
             <section class="mb-4 p-4 border bg-light d-flex flex-column gap-3">
-                <button type="submit" name="save_score" class="btn btn-primary flex-fill d-flex align-items-center justify-content-center gap-1">
-                    <span class="material-icons">save</span>
-                    <span>Simpan Penilaian Ujian</span>
-                </button>
+                <?php if (!$has_rated) : ?>
+                    <button type="submit" name="save_score" class="btn btn-primary flex-fill d-flex align-items-center justify-content-center gap-1">
+                        <span class="material-icons">save</span>
+                        <span>Simpan Penilaian Ujian</span>
+                    </button>
+                <?php else : ?>
+                    <p class="text-center">Anda tidak dapat mengubah penilaian yang sudah diberikan.</p>
+                <?php endif; ?>
                 <a href="./ujian.php?kode=<?=$kodeUjian?>" class="btn btn-secondary d-flex align-items-center justify-content-center gap-2">
                     <span class="material-icons">arrow_back</span>
                     <span>Kembali</span>
