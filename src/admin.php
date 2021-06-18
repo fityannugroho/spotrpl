@@ -12,10 +12,20 @@
 
         $username = htmlspecialchars($_POST['username']);
         $name = htmlspecialchars($_POST['name']);
+        $rootPassword = htmlspecialchars($_POST['root_password']);
         $password = htmlspecialchars($_POST['password']);
         $cpassword = htmlspecialchars($_POST['cpassword']);
 
-        if ($password === $cpassword) {
+        $trueRoot = mysqli_query($conn, "SELECT password FROM Root WHERE id=1");
+        $trueRoot = mysqli_fetch_row($trueRoot)[0];
+
+        if (!password_verify($rootPassword, $trueRoot)) {
+            $_SESSION['alert'] = array(
+                'error' => TRUE,
+                'message' => "Kata Sandi Root Salah!"
+            );
+
+        } elseif ($password === $cpassword) {
 
             $password = password_hash($password, PASSWORD_BCRYPT);    // mengenkripsi password
 
@@ -64,6 +74,9 @@
                 'message' => "Konfirmasi Kata Sandi <b>tidak cocok</b> dengan Kata Sandi yang Anda buat!"
             );
         }
+
+        header('location: ./admin.php');
+        exit;
     }
 
 
@@ -209,8 +222,13 @@
             </header>
             <form action="" method="post">
                 <section class="mb-3">
+                    <label for="rootPassword" class="form-label">Kata Sandi Root</label>
+                    <input class="form-control" type="password" name="root_password" id="rootPassword" placeholder="Kata Sandi Panel Admin" required>
+                    <p class="form-text">Masukkan kata sandi yang sama dengan kata sandi untuk mengakses panel admin.</p>
+                </section>
+                <section class="mb-3">
                     <label for="username" class="form-label">Username</label>
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Buat Username" required>
+                    <input type="text" name="username" id="username" class="form-control" placeholder="Buat Username" pattern="[0-9]{4}" title="Masukkan 4 digit angka" required>
                     <div class="form-text">Username harus terdiri dari 4 karakter angka (Contoh: 1234).</div>
                 </section>
                 <section class="mb-3">
