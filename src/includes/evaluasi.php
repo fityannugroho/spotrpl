@@ -13,7 +13,7 @@
     <?php while ($ujian = mysqli_fetch_assoc($ujianResult)) : ?>
         <article>
             <h3>Ujian <?=$i?></h3>
-            <a href="../exam.php?kode=<?=$ujian['kode']?>" class="btn">
+            <a href="./exam.php?kode=<?=$ujian['kode']?>" class="btn">
                 <i class="material-icons-outlined">task</i>
                 Kerjakan Sekarang
             </a>

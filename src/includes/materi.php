@@ -16,9 +16,9 @@
             <h3><?=$materi['judul']?></h3>
             <p><?=$materi['deskripsi']?></p>
             <?php if (strpos($materi['mimetype'], 'image') !== FALSE) : ?>
-                <img src="../db/<?=$materi['nama_file']?>" alt="<?=$materi['nama_file']?>" width="100%">
+                <img src="./db/<?=$materi['nama_file']?>" alt="<?=$materi['nama_file']?>" width="100%">
             <?php elseif (!empty($materi['nama_file'])) : ?>
-                <a href="../db/<?=$materi['nama_file']?>" target="_blank" class="btn">
+                <a href="./db/<?=$materi['nama_file']?>" target="_blank" class="btn">
                     <i class="material-icons-outlined">attachment</i>
                     Unduh File Materi
                 </a>

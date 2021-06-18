@@ -52,7 +52,7 @@
             } else {
 
                 $newFileName = $kodeSubmit.'_'.$fileName.'.'.$fileExt;          // nama file baru
-                $fileDestination = '../db/'.$newFileName;                       // lokasi tujuan penyimpanan file
+                $fileDestination = './db/'.$newFileName;                       // lokasi tujuan penyimpanan file
 
                 // mengupload file direktori server & menginsert data materi ke database mysql
                 if (move_uploaded_file($fileTmp, $fileDestination)) {
@@ -80,8 +80,8 @@
         $deleteRespons = mysqli_query($conn, "DELETE FROM Submit_Tugas WHERE kode='$kodeSubmit'");
 
         if ($deleteRespons) {
-            if (file_exists("../db/$namaFile")) {
-                unlink("../db/$namaFile");
+            if (file_exists("./db/$namaFile")) {
+                unlink("./db/$namaFile");
                 echo "<p>File yang Anda kumpulkan untuk <b>Tugas $nomorTugas</b> berhasil dihapus.</p>";
             } else {
                 echo "<p>File yang Anda kumpulkan untuk <b>Tugas $nomorTugas</b> sudah tidak ada.</p>";
@@ -150,14 +150,14 @@
                     <?php if (empty($tugas['lampiran'])) : ?>
                         <td>-</td>
                     <?php else : ?>
-                        <td><a href="../db/<?=$tugas['lampiran']?>" target="_blank"><?=$tugas['lampiran']?></a></td>
+                        <td><a href="./db/<?=$tugas['lampiran']?>" target="_blank"><?=$tugas['lampiran']?></a></td>
                     <?php endif; ?>
                 </tr>
-                <form action="../meeting.php?kelas=<?=$kodeKelas?>&pertemuan=<?=$noPertemuan?>&menu=Tugas" method="post" enctype="multipart/form-data">
+                <form action="./meeting.php?kelas=<?=$kodeKelas?>&pertemuan=<?=$noPertemuan?>&menu=Tugas" method="post" enctype="multipart/form-data">
                     <?php if (!empty($submitTugas)) : ?>
                         <tr>
                             <th>Preview Tugas</th>
-                            <td><a href="../db/<?=$submitTugas['file_tugas']?>" target="_blank" rel="noopener noreferrer"><?=$submitTugas['file_tugas']?></a></td>
+                            <td><a href="./db/<?=$submitTugas['file_tugas']?>" target="_blank" rel="noopener noreferrer"><?=$submitTugas['file_tugas']?></a></td>
                         </tr>
                         <tr>
                             <th>Status Pengumpulan</th>
@@ -187,7 +187,7 @@
                             <?php if (empty($submitTugas)) : ?>
                                 <button type="submit" class="btn submit" name="upload_tugas" id="submitTask">Kumpulkan Tugas</button>
                             <?php else : ?>
-                                <form action="../meeting.php?kode=<?=$kodeMeeting?>" method="post">
+                                <form action="./meeting.php?kode=<?=$kodeMeeting?>" method="post">
                                     <input type="hidden" name="kode_submit" value="<?=$submitTugas['kode']?>">
                                     <input type="hidden" name="nama_file" value="<?=$submitTugas['file_tugas']?>">
                                     <input type="hidden" name="nomor_tugas" value="<?=$i?>">
