@@ -314,6 +314,19 @@
                             <hr>
                             <form action="./ujian.php?kode=<?=$ujian['kode_ujian']?>" method="post" enctype="multipart/form-data">
                                 <article class="mb-3">
+                                    <label for="jenisSoal" class="form-label">Jenis Soal :</label>
+                                    <div id="jenisSoal">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="is_pg" value="0" id="jnsSoalEsai" checked>
+                                            <label class="form-check-label" for="jnsSoalEsai">Esai</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="is_pg" value="1" id="jnsSoalPG">
+                                            <label class="form-check-label" for="jnsSoalPG">Pilihan Ganda</label>
+                                        </div>
+                                    </div>
+                                </article>
+                                <article class="mb-3">
                                     <label class="form-label" for="pertanyaan">Pertanyaan :</label>
                                     <textarea class="form-control" name="pertanyaan" id="pertanyaan" cols="30" rows="1" required></textarea>
                                     <div class="form-text">Masukkan pertanyaan yang akan ditanyakan.</div>
@@ -330,40 +343,21 @@
                                     <div class="invalid-feedback">Poin Salah harus diisi dengan angka.</div>
                                     <div class="form-text">Masukkan poin yang akan didapat jika salah menjawab pertanyaan ini.</div>
                                 </article>
-                                <article class="mb-3">
-                                    <label for="jenisSoal" class="form-label">Jenis Soal :</label>
-                                    <div id="jenisSoal">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="is_pg" value="1" id="jnsSoalPG">
-                                            <label class="form-check-label" for="jnsSoalPG">Pilihan Ganda</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="is_pg" value="0" id="jnsSoalEsai">
-                                            <label class="form-check-label" for="jnsSoalEsai">Esai</label>
-                                        </div>
-                                    </div>
-                                </article>
-                                <article class="input-jwb mb-3 d-none" data-type="0">
-                                    <div class="form-text">Jenis soal esai tidak membutuhkan kunci jawaban.</div>
-                                </article>
-                                <article class="input-jwb mb-3 d-none" data-type="1">
+                                <article class="mb-3 d-none" id="opsiPG">
                                     <label class="form-label mb-0" for="kunciJwb">Opsi Pilihan Ganda :</label>
                                     <p class="form-text mt-0 mb-2">Buat opsi jawaban untuk pertanyaan di atas. Minimal harus ada 1 opsi jawaban salah</p>
-
                                     <div class="input-group mb-2">
                                         <div class="input-group-text">
                                             <input class="form-check-input mt-0" type="checkbox" checked disabled>
                                         </div>
                                         <input id="opsiBenar" type="text" class="form-control" name="opsi_benar" placeholder="Opsi Benar">
                                     </div>
-
                                     <div class="input-group mb-2">
                                         <div class="input-group-text">
                                             <input class="form-check-input mt-0" type="checkbox" disabled>
                                         </div>
                                         <input id="opsiSalah" type="text" class="form-control" name="opsi_salah1" placeholder="Opsi Salah 1">
                                     </div>
-
                                     <div class="input-group mb-2">
                                         <div class="input-group-text">
                                             <input class="form-check-input mt-0" type="checkbox" disabled>
@@ -555,27 +549,29 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8" crossorigin="anonymous"></script>
     <script>
         const questionTypes = document.querySelectorAll('#jenisSoal input');
-        const answerKeyInputs = document.querySelectorAll('.input-jwb');
+        const opsiPG = document.querySelector('#opsiPG');
+        const opsiBenar = document.querySelector('#opsiBenar');
+        const opsiSalah = document.querySelector('#opsiSalah');
 
         questionTypes.forEach((type) => {
             type.addEventListener('input', () => {
-                answerKeyInputs.forEach((inputEl) => {
-                    inputEl.classList.add('d-none');
 
-                    const isPG = inputEl.getAttribute('data-type');
+                opsiPG.classList.add('d-none');
 
-                    if (type.getAttribute('value') === isPG) {
-                        inputEl.classList.remove('d-none');
+                if (opsiBenar.hasAttribute('required')) {
+                    opsiBenar.removeAttribute('required');
+                }
 
-                        if (isPG == 1) {
-                            const opsiBenar = inputEl.querySelector('#opsiBenar');
-                            const opsiSalah1 = inputEl.querySelector('#opsiSalah');
+                if (opsiSalah.hasAttribute('required')) {
+                    opsiSalah.removeAttribute('required');
+                }
 
-                            opsiBenar.setAttribute('required', '');
-                            opsiSalah1.setAttribute('required', '');
-                        }
-                    }
-                });
+                // jika memilih PG
+                if (type.getAttribute('value') == 1) {
+                    opsiBenar.setAttribute('required', '');
+                    opsiSalah.setAttribute('required', '');
+                    opsiPG.classList.remove('d-none');
+                }
             });
         });
 
