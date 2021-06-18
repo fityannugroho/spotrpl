@@ -98,7 +98,7 @@
     <noscript><link rel="stylesheet" href="./styles/navbar.css"></noscript>
     <link rel="preload" href="./styles/meeting.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="./styles/meeting.css"></noscript>
-    <title>Pemrograman Web | SPOT RPL</title>
+    <title><?=$pertemuan['nama_mk']?> <?=$pertemuan['nama_kelas']?> | SPOT RPL</title>
 </head>
 <body>
     <nav>
