@@ -158,6 +158,12 @@
     $hasDoneExam = mysqli_fetch_row($hasDoneExamResult)[0];
 
 
+    // mendapatkan nilai ujian jika sudah dinilai
+    $hasExamCheckedResult = mysqli_query($conn, "SELECT * FROM Nilai_Ujian WHERE ujian='$kodeUjian' AND mahasiswa='$nim' AND sudah_dinilai=1");
+    $hasExamChecked = mysqli_num_rows($hasExamCheckedResult) == 1;
+    $examScore = ($hasExamChecked) ? mysqli_fetch_assoc($hasExamCheckedResult) : null;
+
+
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
 
@@ -337,7 +343,9 @@
                 </div>
             </section>
             <section class="mb-2 p-3 border bg-light d-flex flex-column gap-3">
-                <?php if (isset($hasDoneExam) && $hasDoneExam) : ?>
+                <?php if (isset($hasExamChecked) && $hasExamChecked) : ?>
+                    <p class="text-center">Nilai Ujian Anda : <b><?=$examScore['nilai']?></b></p>
+                <?php elseif (isset($hasDoneExam) && $hasDoneExam) : ?>
                     <p>Anda sudah mengerjakan ujian ini. Silahkan tunggu dosen Anda memeriksa jawaban untuk mengetahui nilai ujian Anda.</p>
                 <?php else : ?>
                     <div>
