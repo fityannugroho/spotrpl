@@ -153,7 +153,7 @@
                         <td><a href="../db/<?=$tugas['lampiran']?>" target="_blank"><?=$tugas['lampiran']?></a></td>
                     <?php endif; ?>
                 </tr>
-                <form action="../page/meeting.php?kelas=<?=$kodeKelas?>&pertemuan=<?=$noPertemuan?>&menu=Tugas" method="post" enctype="multipart/form-data">
+                <form action="../meeting.php?kelas=<?=$kodeKelas?>&pertemuan=<?=$noPertemuan?>&menu=Tugas" method="post" enctype="multipart/form-data">
                     <?php if (!empty($submitTugas)) : ?>
                         <tr>
                             <th>Preview Tugas</th>
@@ -187,7 +187,7 @@
                             <?php if (empty($submitTugas)) : ?>
                                 <button type="submit" class="btn submit" name="upload_tugas" id="submitTask">Kumpulkan Tugas</button>
                             <?php else : ?>
-                                <form action="../page/meeting.php?kode=<?=$kodeMeeting?>" method="post">
+                                <form action="../meeting.php?kode=<?=$kodeMeeting?>" method="post">
                                     <input type="hidden" name="kode_submit" value="<?=$submitTugas['kode']?>">
                                     <input type="hidden" name="nama_file" value="<?=$submitTugas['file_tugas']?>">
                                     <input type="hidden" name="nomor_tugas" value="<?=$i?>">
