@@ -288,7 +288,8 @@ BEGIN
         ON mk.kode = kls.mata_kuliah
     WHERE kls.kode NOT IN (
         SELECT kks.kelas FROM Kontrak_Kelas AS kks WHERE mahasiswa = nim
-    );
+    )
+    ORDER BY mk.nama ASC, kls.nama ASC;
 END; //
 DELIMITER ;
 
