@@ -12,22 +12,20 @@
         $query = "CALL $procedure";
 
         // mengeksekusi multi query
-        if (mysqli_multi_query($conn, $query)) {
+        if ($conn->multi_query($query)) {
             do {
                 // menyimpan set pertama
-                if ($queryResult = mysqli_store_result($conn)) {
-
+                if ($queryResult = $conn->store_result()) {
                     $set = array();
 
-                    while ($row = mysqli_fetch_assoc($queryResult)) {
+                    while ($row = $queryResult->fetch_assoc())
                         array_push($set, $row);
-                    }
 
                     array_push($result, $set);
-                    mysqli_free_result($queryResult);
+                    $queryResult->free_result();
                 }
                 // menuju ke set selanjutnya
-            } while (mysqli_next_result($conn));
+            } while ($conn->next_result());
         }
 
         // hanya mengembalikan D2 dan D3, jika hanya ada 1 set yang ditemukan.
@@ -45,7 +43,6 @@
     function code_generator($numLen = 5, $prefix = '', $suffix = '') {
         $randNum = '';
         while ($numLen > 0) {
-            # code...
             $randNum .= rand(0, 9);
             $numLen--;
         }
@@ -60,7 +57,6 @@
      * @return array mengembalikan status & pesan dari proses upload. Status error akan bernilai 'true' jika upload file gagal, berlaku sebaliknya.
      */
     function upload_file($file, $destination) {
-
         /**
          * Persyaratan File :
          * 1. Ekstensi yang diperbolehkan terbatas, tercantum dalam variabel $allowedExt.
