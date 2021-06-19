@@ -13,16 +13,18 @@
             'error' => TRUE,
             'message' => "URL tidak valid."
         );
-
         // mengarahkan kembali ke halaman utama admin
         header("location: ../admin.php");
         exit;
     }
 
+
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi admin tidak aktif, mengarahkan ke halaman utama admin.
     if (!isset($_SESSION['admin']) && !$_SESSION['admin']) {
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: ../admin.php?redirect=$redirectLink");
+        header("location: ../admin.php?redirect=$urlOfThisPage");
         exit;
     }
 
@@ -32,7 +34,9 @@
     // mendapatkan kode ujian
     $kodeUjian = $_GET['ujian'];
 
-    $listJwb = call_procedure($conn, "get_exam_answer('$kodeUjian', '$nim')");
+    // mengecek apakah mhs sudah pernah mengerjakan ujian ini
+    $hasDoneExamResult = mysqli_query($conn, "SELECT has_done_exam('$kodeUjian', '$nim')");
+    $hasDoneExam = mysqli_fetch_row($hasDoneExamResult)[0];
 
     // mengambil data jawaban ujian mhs soal PG
     $listJwbPG = call_procedure($conn, "get_pg_answer('$kodeUjian', '$nim')");
@@ -40,20 +44,19 @@
     // mengambil data jawaban ujian mhs soal Esai
     $listJwbEsai = call_procedure($conn, "get_esai_answer('$kodeUjian', '$nim')");
 
-    if (sizeof($listJwb) === 0) {
+    if (!$hasDoneExam) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
-            'message' => "Data jawaban tidak ditemukan."
+            'message' => "Mahasiswa belum mengerjakan ujian ini."
         );
-
         // mengarahkan kembali ke halaman utama admin
         header("location: ../admin.php");
         exit;
     }
 
     // mengambil data mhs
-    $mhsResult = mysqli_query($conn, "SELECT nim, nama_lengkap FROM Mahasiswa WHERE nim='$nim'");
-    $mhs = mysqli_fetch_assoc($mhsResult);
+    $mhsResult = $conn->query("SELECT nim, nama_lengkap FROM Mahasiswa WHERE nim='$nim'");
+    $mhs = ($mhsResult->num_rows === 1) ? $mhsResult->fetch_assoc() : null;
 
     // mengambil data soal PG
     $listSoalPG = call_procedure($conn, "ambil_soal_pg('$kodeUjian')");
@@ -62,37 +65,30 @@
     $listSoalEsai = call_procedure($conn, "ambil_soal_esai('$kodeUjian')");
 
     if (isset($_POST['save_score'])) {
-
         $countErr = 0;
+        $listPoinPG = array();
+        $listPoinEsai = array();
 
         // memasukkan poin jawaban PG
-        $listPoinPG = array();
         foreach ($listSoalPG as $soalPG) {
             $kodeSoal = $soalPG['kode_soal'];
             $poin = 0;
 
             foreach ($listJwbPG as $jwbPG) {
                 if ($jwbPG['kode_soal'] === $kodeSoal) {
-                    if ($jwbPG['jawaban'] === $soalPG['opsi_benar']) {
-                        $poin = $soalPG['poin_benar'];
-                    } else {
-                        $poin = $soalPG['poin_salah'];
-                    }
+                    $poin = ($jwbPG['jawaban'] === $soalPG['opsi_benar']) ? $soalPG['poin_benar'] : $soalPG['poin_salah'];
                     break;
                 }
             }
 
-            $insertScore = mysqli_query($conn, "UPDATE Jawaban_Ujian SET poin=$poin
-                WHERE ujian='$kodeUjian' AND soal='$kodeSoal' AND mahasiswa='$nim'
-            ");
+            $insertScore = $conn->query("UPDATE Jawaban_Ujian SET poin=$poin
+                WHERE ujian='$kodeUjian' AND soal='$kodeSoal' AND mahasiswa='$nim'");
 
             array_push($listPoinPG, $poin);
-
             if (!$insertScore) $countErr++;
         }
 
         // mendapatkan list poin jawaban esai
-        $listPoinEsai = array();
         foreach ($_POST as $field => $value) {
             if (strpos($field, 'SOL') === 0) {
                 array_push($listPoinEsai, $value);
@@ -105,36 +101,29 @@
             $kodeSoal = $soalEsai['kode_soal'];
             $poin = $listPoinEsai[$i];
 
-            $insertScore = mysqli_query($conn, "UPDATE Jawaban_Ujian SET poin=$poin
-                WHERE ujian='$kodeUjian' AND soal='$kodeSoal' AND mahasiswa='$nim'
-            ");
+            $insertScore = $conn->query("UPDATE Jawaban_Ujian SET poin=$poin
+                WHERE ujian='$kodeUjian' AND soal='$kodeSoal' AND mahasiswa='$nim'");
 
             if (!$insertScore) $countErr++;
             $i++;
         }
 
         if ($countErr > 0) {
-            $errMsg = mysqli_error($conn);
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan saat hendak memasukkan poin pada $countErr soal <i>$errMsg</i>"
+                'message' => "Terjadi kesalahan saat hendak memasukkan poin pada $countErr soal <i>$conn->error</i>"
             );
         }
 
 
         // menjumlahkan poin
         $totalPoin = 0;
-        foreach ($listPoinPG as $poinPG) {
-            $totalPoin += $poinPG;
-        }
-        foreach ($listPoinEsai as $poinEsai) {
-            $totalPoin += $poinEsai;
-        }
+        foreach ($listPoinPG as $poinPG) $totalPoin += $poinPG;
+        foreach ($listPoinEsai as $poinEsai) $totalPoin += $poinEsai;
 
         // memasukkan data total poin
-        $insertTotalScore = mysqli_query($conn, "UPDATE Nilai_Ujian SET nilai = $totalPoin, sudah_dinilai=TRUE
-            WHERE ujian='$kodeUjian' AND mahasiswa='$nim'
-        ");
+        $insertTotalScore = $conn->query("UPDATE Nilai_Ujian SET nilai = $totalPoin, sudah_dinilai=TRUE
+            WHERE ujian='$kodeUjian' AND mahasiswa='$nim'");
 
         header("location: ./ujian.php?kode=$kodeUjian");
         exit;
@@ -142,18 +131,17 @@
 
 
     // mengecek apakah jawaban ujian ini sudah pernah dinilai atau belum
-    $has_rated = mysqli_query($conn, "SELECT has_exam_already_rated('$kodeUjian', '$nim') AS has_rated");
-    $has_rated = mysqli_fetch_row($has_rated)[0];
+    $has_rated_res = $conn->query("SELECT has_exam_already_rated('$kodeUjian', '$nim') AS has_rated");
+    $has_rated = $has_rated_res->fetch_row()[0];
+
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
     if (isset($_SESSION['alert']) && $_SESSION['alert']) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -226,16 +214,14 @@
                                     $kodeSoal = $soalPG['kode_soal'];
                                     $jwbPG = '';
                                     foreach ($listJwbPG as $tJwbPG) {
-                                        if ($tJwbPG['kode_soal'] == $kodeSoal) {
+                                        if ($tJwbPG['kode_soal'] == $kodeSoal)
                                             $jwbPG = $tJwbPG['jawaban'];
-                                        }
                                     }
 
                                     $optList = array();
                                     foreach ($soalPG as $field => $value) {
-                                        if (strpos($field, 'opsi') !== FALSE && !empty($value)) {
+                                        if (strpos($field, 'opsi') !== FALSE && !empty($value))
                                             array_push($optList, $value);
-                                        }
                                     }
                                     shuffle($optList);
                                 ?>

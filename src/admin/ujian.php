@@ -13,16 +13,18 @@
             'error' => TRUE,
             'message' => "URL tidak valid."
         );
-
         // mengarahkan kembali ke halaman utama admin
         header("location: ../admin.php");
         exit;
     }
 
+
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi admin tidak aktif, mengarahkan ke halaman utama admin.
     if (!isset($_SESSION['admin']) && !$_SESSION['admin']) {
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: ../admin.php?redirect=$redirectLink");
+        header("location: ../admin.php?redirect=$urlOfThisPage");
         exit;
     }
 
@@ -38,12 +40,10 @@
 
     // menghandle form buat soal baru
     if (isset($_POST['tambah_soal'])) {
-
         $pertanyaan = htmlspecialchars($_POST['pertanyaan']);
         $poinBenar = htmlspecialchars($_POST['poin_benar']);
         $poinSalah = htmlspecialchars($_POST['poin_salah']);
         $isPG = htmlspecialchars($_POST['is_pg']);
-        $fileSoal = $_FILES['file_soal'];
         $opsiBenar = htmlspecialchars($_POST['opsi_benar']);
         $opsiSalah1 = htmlspecialchars($_POST['opsi_salah1']);
         $opsiSalah2 = htmlspecialchars($_POST['opsi_salah2']);
@@ -55,117 +55,68 @@
         // mencari kode soal yang belum terpakai
         do {
             $kodeSoal = code_generator(5, 'SOL');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Soal WHERE kode='$kodeSoal'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+            $checkPK = $conn->query("SELECT * FROM Soal WHERE kode='$kodeSoal'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
         // mencari kode paket yang belum terpakai
         do {
             $kodePaket = code_generator(5, 'PKT');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Paket_Soal WHERE kode='$kodePaket'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+            $checkPK = $conn->query("SELECT * FROM Paket_Soal WHERE kode='$kodePaket'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
 
         // mendapatkan nama file & ekstensinya
-        $breakFileName = explode('.', $fileSoal['name']);
-        $fileName = $breakFileName[0];
-        $fileExt = strtolower(end($breakFileName));
-        // mendapatkan informasi file lainnya
-        $mimetype = $fileSoal['type'];
-        $fileSize = $fileSoal['size'];
-        $fileTmp = $fileSoal['tmp_name'];
-        $fileError = $fileSoal['error'];
+        $fileSoal = $_FILES['file_soal'];
+        $breakFileName = break_filename($fileSoal);
+        $fileName = $breakFileName['name'];
+        $fileExt = $breakFileName['ext'];
+        $newFileName = $kodeSoal.'_'.$fileName.'.'.$fileExt;    // nama file baru
+        $fileDestination = '../db/'.$newFileName;               // lokasi tujuan penyimpanan file
 
-        // mengecek jika ada file soal yang diupload
+        $uploadRespons = FALSE;
         $emptyFileErrCode = 4;
 
-        if ($fileError !== $emptyFileErrCode) {
-            // validasi file soal
-            $allowedExt = array('jpg', 'jpeg', 'png', 'pdf', 'pptx', 'docx', 'zip', 'rar');
-            $maxAllowedSize = 5000000; // 5 MB
+        // mengecek jika ada file soal yang diupload
+        // jika tidak ada file yang diupload
+        if ($fileSoal['error'] === $emptyFileErrCode) {
+            // menambahkan soal tanpa file lampiran
+            $uploadRespons = $conn->query("INSERT INTO Soal (kode, pilihan_ganda, pertanyaan, poin_benar, poin_salah)
+                VALUES ('$kodeSoal', $isPG, '$pertanyaan', $poinBenar, $poinSalah)");
 
-            // memastikan tidak ada error pada file & file yang diupload sesuai persyaratan
-            if ($fileError !== 0 || !in_array($fileExt, $allowedExt) || $fileSize > $maxAllowedSize) {
-                // jika file tidak sesuai persyaratan atau terjadi error
+        } else {
+            $fileUpload = upload_file($fileSoal, $fileDestination);
+
+            if ($fileUpload['error'] === false) {
+                // menambahkan soal dengan file lampiran
+                $uploadRespons = $conn->query("INSERT INTO Soal (kode, pilihan_ganda, pertanyaan, poin_benar, poin_salah, nama_file, mimetype)
+                    VALUES ('$kodeSoal', $isPG, '$pertanyaan', $poinBenar, $poinSalah, '$newFileName', '$mimetype')");
+
+            } else {
                 $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat mengupload file lampiran! Pastikan file lampiran yang akan diupload sudah memenuhi persyaratan."
+                    'error' => $fileUpload['error'],
+                    'message' => $fileUpload['message']
                 );
-                header("location: ./ujian.php?kode=$kodeUjian");
+                header("location: $urlOfThisPage");
                 exit;
             }
         }
 
-        $uploadRespons = FALSE;
-
-        // mengecek jenis soal apakah ini, PG atau esai
-        if (!$isPG) {
-            // jika esai
-            if ($fileError === $emptyFileErrCode) {
-                // menambahkan soal esai tanpa file lampiran
-                $uploadRespons = mysqli_query($conn, "INSERT INTO Soal (kode, pertanyaan, poin_benar, poin_salah)
-                    VALUES ('$kodeSoal', '$pertanyaan', $poinBenar, $poinSalah)
-                ");
-
-            } else {
-                // menambahkan soal esai yang memiliki file lampiran
-                $newFileName = $kodeSoal.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO Soal (kode, pertanyaan, poin_benar, poin_salah, nama_file, mimetype)
-                        VALUES ('$kodeSoal', '$pertanyaan', $poinBenar, $poinSalah, '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-                }
-            }
-
-        } else {
-            // jika PG
-            if ($fileError === $emptyFileErrCode) {
-                // menambahkan soal PG tanpa file lampiran
-                $uploadRespons = mysqli_query($conn, "INSERT INTO Soal (kode, pilihan_ganda, pertanyaan, poin_benar, poin_salah)
-                    VALUES ('$kodeSoal', $isPG, '$pertanyaan', $poinBenar, $poinSalah)
-                ");
-
-            } else {
-                // menambahkan soal PG yang memiliki lampiran
-                $newFileName = $kodeSoal.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO Soal (kode, pilihan_ganda, pertanyaan, poin_benar, poin_salah, nama_file, mimetype)
-                        VALUES ('$kodeSoal', $isPG, '$pertanyaan', $poinBenar, $poinSalah, '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-                }
-            }
-
-            // menambahkan opsi PG untuk soal ini
+        // jika ini soal PG, menambahkan opsi PG untuk soal ini
+        if ($isPG) {
             $kodePG = '';
-
             // mencari kode PG yang belum terpakai
             do {
                 $kodePG = code_generator(5, 'PGS');
-                $checkPK = mysqli_query($conn, "SELECT * FROM Opsi_PG WHERE kode='$kodePG'");
-            } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+                $checkPK = $conn->query("SELECT * FROM Opsi_PG WHERE kode='$kodePG'");
+            } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
-            $uploadRespons = $uploadRespons && mysqli_query($conn, "INSERT INTO Opsi_PG (kode, soal, opsi_benar, opsi_salah1, opsi_salah2, opsi_salah3, opsi_salah4)
-                VALUES ('$kodePG', '$kodeSoal', '$opsiBenar', '$opsiSalah1', '$opsiSalah2', '$opsiSalah3', '$opsiSalah4')
-            ");
+            $uploadRespons = $uploadRespons && $conn->query("INSERT INTO Opsi_PG (kode, soal, opsi_benar, opsi_salah1, opsi_salah2, opsi_salah3, opsi_salah4)
+                VALUES ('$kodePG', '$kodeSoal', '$opsiBenar', '$opsiSalah1', '$opsiSalah2', '$opsiSalah3', '$opsiSalah4')");
         }
 
         // menambahkan data ke tabel paket soal
-        $uploadRespons = $uploadRespons && mysqli_query($conn, "INSERT INTO Paket_Soal (kode, ujian, soal)
-            VALUES ('$kodePaket', '$kodeUjian', '$kodeSoal')
-        ");
+        $uploadRespons = $uploadRespons && $conn->query("INSERT INTO Paket_Soal (kode, ujian, soal)
+            VALUES ('$kodePaket', '$kodeUjian', '$kodeSoal')");
 
         // memberikan respon berhasil
         if ($uploadRespons) {
@@ -174,49 +125,43 @@
                 'message' => "Soal baru berhasil ditambahkan (kode soal: <b>$kodeSoal</b>)."
             );
         } else {
-            $errCode = mysqli_errno($conn);
-            $errMsg = mysqli_error($conn);
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi Kesalahan! <i>Last Error: $errMsg (Code: $errCode)</i>."
+                'message' => "Terjadi Kesalahan! <i>Last Error: $conn->error (Code: $conn->errno)</i>."
             );
         }
-
-        header("location: ./ujian.php?kode=$kodeUjian");
+        header("location: $urlOfThisPage");
         exit;
     }
 
     // mengambil semua soal pg
     $listSoalPG = call_procedure($conn, "ambil_soal_pg('$kodeUjian')");
 
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
+    if ($errCode = $conn->errno !== 0) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
-            'message' => "Terjadi Kesalahan! <i>Last Error: $errMsg (Code: $errCode)</i>."
+            'message' => "Terjadi Kesalahan! <i>Last Error: $conn->error (Code: $errCode)</i>."
         );
     }
 
     // mengambil semua soal esai
     $listSoalEsai = call_procedure($conn, "ambil_soal_esai('$kodeUjian')");
 
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
+    if ($errCode = $conn->errno !== 0) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
-            'message' => "Terjadi Kesalahan! <i>Last Error: $errMsg (Code: $errCode)</i>."
+            'message' => "Terjadi Kesalahan! <i>Last Error: $conn->error (Code: $errCode)</i>."
         );
     }
 
+
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
-    if (isset($_SESSION['alert']) && $_SESSION['alert']) {
+    if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -505,11 +450,12 @@
                     <tbody>
                         <?php foreach ($listNilaiUjian as $nilaiUjian) : ?>
                             <?php
-                                // mengambil list jwb PG mhs
+                                // mengecek apakah mhs sudah pernah mengerjakan ujian ini
                                 $nim = $nilaiUjian['nim'];
-                                $listJwb = call_procedure($conn, "get_exam_answer('$kodeUjian', '$nim')");
+                                $hasDoneExamResult = mysqli_query($conn, "SELECT has_done_exam('$kodeUjian', '$nim')");
+                                $hasDoneExam = mysqli_fetch_row($hasDoneExamResult)[0];
                             ?>
-                            <?php if (sizeof($listJwb) > 0) : ?>
+                            <?php if ($hasDoneExam) : ?>
                                 <tr class="jwb-mhs" data-link="./nilai.php?mhs=<?=$nim?>&ujian=<?=$kodeUjian?>">
                                     <td><?=$nilaiUjian['nim']?></td>
                                     <td><?=$nilaiUjian['nama_lengkap']?></td>
@@ -552,16 +498,10 @@
 
         questionTypes.forEach((type) => {
             type.addEventListener('input', () => {
-
                 opsiPG.classList.add('d-none');
 
-                if (opsiBenar.hasAttribute('required')) {
-                    opsiBenar.removeAttribute('required');
-                }
-
-                if (opsiSalah.hasAttribute('required')) {
-                    opsiSalah.removeAttribute('required');
-                }
+                if (opsiBenar.hasAttribute('required')) opsiBenar.removeAttribute('required');
+                if (opsiSalah.hasAttribute('required')) opsiSalah.removeAttribute('required');
 
                 // jika memilih PG
                 if (type.getAttribute('value') == 1) {
@@ -575,9 +515,7 @@
         const answers = document.querySelectorAll('.jwb-mhs');
         answers.forEach((answer) => {
             answer.addEventListener('click', () => {
-                if (answer.hasAttribute('data-link')) {
-                    window.location.href = answer.getAttribute('data-link');
-                }
+                if (answer.hasAttribute('data-link')) window.location.href = answer.getAttribute('data-link');
             })
         });
     </script>

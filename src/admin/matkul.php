@@ -7,23 +7,25 @@
     // mengimport user-defined functions
     include '../includes/function.php';
 
-    // memastikan URL valid
-    if (!isset($_GET['kode']) || empty($_GET['kode'])) {
-        // jika tidak valid
+
+    // jika URL tidak valid (tidak memiliki parameter 'kode')
+    if (!$_GET['kode'] || empty($_GET['kode'])) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
             'message' => "URL tidak valid."
         );
-
         // mengarahkan kembali ke halaman utama admin
         header("location: ../admin.php");
         exit;
     }
 
+
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi admin tidak aktif, mengarahkan ke halaman utama admin.
-    if (!isset($_SESSION['admin']) && !$_SESSION['admin']) {
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: ../admin.php?redirect=$redirectLink");
+    if (!isset($_SESSION['admin']) || !$_SESSION['admin']) {
+        header("location: ../admin.php?redirect=$urlOfThisPage");
         exit;
     }
 
@@ -34,54 +36,46 @@
     // mengeksekusi query untuk mendapatkan data mata kuliah
     $matkul = call_procedure($conn, "get_subject('$kodeMatkul')");
 
-    if (sizeof($matkul) === 1) {
-        // mendapatkan data mata kuliah
-        $matkul = $matkul[0];
-
-    } else {
+    if (sizeof($matkul) !== 1) {
+        // jika data kelas tidak ditemukan pada database
         if (sizeof($matkul) === 0) {
-            // jika data kelas tidak ditemukan pada database
             $_SESSION['alert'] = array(
                 'error' => TRUE,
                 'message' => "Mata Kuliah dengan kode <b>$kodeMatkul</b> tidak dapat ditemukan."
             );
         } else {
             // memberikan respon gagal lainnya
-            $errMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan! <i>$errMsg</i>"
+                'message' => "Terjadi kesalahan! <i>$conn->error</i>"
             );
         }
         // mengarahkan ke halaman utama admin
         header("location: ../admin.php");
         exit;
+
     }
 
+    // mendapatkan data mata kuliah
+    $matkul = (sizeof($matkul) === 1) ? $matkul[0] : null;
 
     // menangani form hapus mata kuliah
     if (isset($_POST['hapus_matkul'])) {
-
         $kode = htmlspecialchars($_POST['kode']);
+        $deleteRespons = $conn->query("DELETE FROM Mata_Kuliah WHERE kode='$kode'");
 
-        $deleteRespons = mysqli_query($conn, "DELETE FROM Mata_Kuliah WHERE kode='$kode'");
-
+        // memberikan respons
         if ($deleteRespons) {
             $_SESSION['alert'] = array(
                 'error' => FALSE,
                 'message' => "Data Mata Kuliah berhasil dihapus."
             );
-
             header('location: ../admin.php');
             exit;
         } else {
-            // memberikan respon gagal
-            $errorMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan saat menghapus data.<br><i>$errorMsg!</i>"
+                'message' => "Terjadi kesalahan saat menghapus data.<br><i>$conn->error!</i>"
             );
         }
     }
@@ -99,36 +93,30 @@
         $kodeDosen1 = htmlspecialchars($_POST['dosen_pengampu1']);
         $kodeDosen2 = (empty($_POST['dosen_pengampu2'])) ? null : htmlspecialchars($_POST['dosen_pengampu2']);
 
-        $stmt = mysqli_prepare($conn, "UPDATE Mata_Kuliah SET nama=?, semester=?, sks=?, thn_mulai=?, thn_selesai=?, jml_pertemuan=?, dosen_pengampu1=?, dosen_pengampu2=?
-            WHERE kode=?
-        ");
-        mysqli_stmt_bind_param($stmt, 'siississs', $nama, $semester, $sks, $thnMulai, $thnSelesai, $jmlPertemuan, $kodeDosen1, $kodeDosen2, $kode);
+        $stmt = $conn->prepare("UPDATE Mata_Kuliah SET nama = ?, semester = ?, sks = ?, thn_mulai = ?, thn_selesai = ?, jml_pertemuan = ?, dosen_pengampu1 = ?, dosen_pengampu2 = ? WHERE kode = ?");
+        $stmt->bind_param('siississs', $nama, $semester, $sks, $thnMulai, $thnSelesai, $jmlPertemuan, $kodeDosen1, $kodeDosen2, $kode);
 
-        // memberikan respon berhasil
-        if (mysqli_stmt_execute($stmt)) {
+        // mengeksekusi query & memberikan respons
+        if ($stmt->execute()) {
             $_SESSION['alert'] = array(
                 'error' => FALSE,
                 'message' => "Perubahan berhasil dilakukan."
             );
         } else {
-            // memberikan respon gagal
-            $errorMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan saat merubah data.<br><i>$errorMsg!</i>"
+                'message' => "Terjadi kesalahan saat merubah data.<br><i>$conn->error!</i>"
             );
         }
 
         // memuat ulang halaman agar perubahan dapat dimunculkan
-        header("location: ./matkul.php?kode=$kode");
+        header("location: $urlOfThisPage");
         exit;
     }
 
 
     // menangani form buat kelas baru
     if (isset($_POST['buat_kelas'])) {
-
         $nama = $matkul['semester'].htmlspecialchars($_POST['nama']);
         $kapasitas = htmlspecialchars($_POST['kapasitas']);
         $kode = '';
@@ -136,15 +124,11 @@
         // mencari kode yang belum terpakai
         do {
             $kode = code_generator(5, 'KLS');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Kelas WHERE kode='$kode'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+            $checkPK = $conn->query("SELECT * FROM Kelas WHERE kode='$kode'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
-
-        $insertQuery = "INSERT INTO Kelas (kode, mata_kuliah, nama, kapasitas)
-            VALUES ('$kode', '$kodeMatkul', '$nama', $kapasitas)
-        ";
-
-        $insertRespons = mysqli_query($conn, $insertQuery);
+        // menambahkan data kelas baru
+        $insertRespons = $conn->query("INSERT INTO Kelas (kode, mata_kuliah, nama, kapasitas) VALUES ('$kode', '$kodeMatkul', '$nama', $kapasitas)");
 
         // memberikan respon berhasil
         if ($insertRespons) {
@@ -154,11 +138,8 @@
             );
         } else {
             // memberikan respon gagal
-            $errCode = mysqli_errno($conn);
-            $errorMsg = mysqli_error($conn);
             $duplicatePKErr = 1062;
-
-            if ($errCode === $duplicatePKErr) {
+            if ($conn->errno === $duplicatePKErr) {
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
                     'message' => "Kode Kelas <b>'$kode'</b> sudah terpakai! Harap gunakan kode lain."
@@ -166,7 +147,7 @@
             } else {
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat menambahkan data kelas.<br><i>$errorMsg!</i>"
+                    'message' => "Terjadi kesalahan saat menambahkan data kelas.<br><i>$conn->error!</i>"
                 );
             }
         }
@@ -175,182 +156,125 @@
 
     // menangani form upload RPS
     if (isset($_POST['upload_rps'])) {
-
         $kodeMK = htmlspecialchars($_POST['kode_mk']);
         $kodeRPS = 'RPS'.$kodeMK;
 
         // mengecek jika kode benar-benar belum terpakai
-        $isKodeExist = mysqli_query($conn, "SELECT EXISTS(SELECT kode FROM RPS WHERE kode='$kodeRPS') AS is_exists");
+        $isKodeExist = $conn->query("SELECT EXISTS(SELECT kode FROM RPS WHERE kode='$kodeRPS') AS is_exists");
 
-        if ($isKodeExist && mysqli_fetch_row($isKodeExist)[0]) {
-            // jika kode materi sudah terpakai
+        // jika kode rps sudah terpakai
+        if ($isKodeExist && $isKodeExist->fetch_row()[0]) {
             $_SESSION['alert'] = array(
                 'error' => TRUE,
                 'message' => "Kode RPS <b>'$kodeRPS'</b> sudah terpakai! Harap gunakan kode lain."
             );
 
         } else {
-            $allowedExt = array('jpg', 'jpeg', 'png', 'pdf', 'pptx', 'docx', 'zip', 'rar');
-            $maxAllowedSize = 5000000; // 5 MB
-
             // mendapatkan nama file & ekstensinya
             $rps = $_FILES['rps'];
-            $breakFileName = explode('.', $rps['name']);
-            $fileName = $breakFileName[0];
-            $fileExt = strtolower(end($breakFileName));
+            $breakFileName = break_filename($rps);
+            $fileName = $breakFileName['name'];
+            $fileExt = $breakFileName['ext'];
+            $newFileName = $kodeRPS.'_'.$fileName.'.'.$fileExt;     // nama file baru
+            $fileDestination = '../db/'.$newFileName;               // lokasi tujuan penyimpanan file
 
-            // mendapatkan informasi file lainnya
-            $mimetype = $rps['type'];
-            $fileSize = $rps['size'];
-            $fileTmp = $rps['tmp_name'];
-            $fileError = $rps['error'];
+            // mengupload file rps
+            $uploadRespons = upload_file($rps, $fileDestination);
 
+            if ($uploadRespons['error'] === false) {
+                // menginputkan data file yang sudah diupload
+                $stmt = $conn->prepare("INSERT INTO RPS (kode, mata_kuliah, nama_file, mimetype) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param('ssss', $kodeRPS, $kodeMK, $newFileName, $rps['type']);
 
-            // memastikan tidak ada error pada file & file yang diupload sesuai persyaratan
-            if ($fileError !== 0 || !in_array($fileExt, $allowedExt) || $fileSize > $maxAllowedSize) {
-                // jika file tidak sesuai persyaratan atau terjadi error
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat mengupload file! Pastikan file yang akan diupload sudah memenuhi persyaratan."
-                );
-            } else {
-
-                $newFileName = $kodeRPS.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO RPS (kode, mata_kuliah, nama_file, mimetype)
-                        VALUES ('$kodeRPS', '$kodeMK', '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-
-                    // memberikan respon berhasil
-                    if ($uploadRespons) {
-                        $_SESSION['alert'] = array(
-                            'error' => FALSE,
-                            'message' => "File RPS berhasil ditambahkan."
-                        );
-                    }
+                // mengeksekusi query & memberikan respons
+                if ($stmt->execute()) {
+                    $_SESSION['alert'] = array(
+                        'error' => false,
+                        'message' => "File RPS berhasil ditambahkan."
+                    );
+                } else {
+                    $_SESSION['alert'] = array(
+                        'error' => true,
+                        'message' => "File RPS gagal ditambahkan."
+                    );
                 }
+
+            } else {
+                $_SESSION['alert'] = array(
+                    'error' => $uploadRespons['error'],
+                    'message' => $uploadRespons['message']
+                );
             }
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
 
 
     // menangani form upload silabus
     if (isset($_POST['upload_silabus'])) {
-
         $kodeMK = htmlspecialchars($_POST['kode_mk']);
         $kodeSilabus = 'SLB'.$kodeMK;
 
         // mengecek jika kode benar-benar belum terpakai
-        $isKodeExist = mysqli_query($conn, "SELECT EXISTS(SELECT kode FROM Silabus WHERE kode='$kodeSilabus') AS is_exists");
+        $isKodeExist = $conn->query("SELECT EXISTS(SELECT kode FROM Silabus WHERE kode='$kodeSilabus') AS is_exists");
 
-        if ($isKodeExist && mysqli_fetch_row($isKodeExist)[0]) {
-            // jika kode materi sudah terpakai
+        // jika kode silabus sudah terpakai
+        if ($isKodeExist && $isKodeExist->fetch_row()[0]) {
             $_SESSION['alert'] = array(
                 'error' => TRUE,
                 'message' => "Kode Silabus <b>'$kodeSilabus'</b> sudah terpakai! Harap gunakan kode lain."
             );
 
         } else {
-            $allowedExt = array('jpg', 'jpeg', 'png', 'pdf', 'pptx', 'docx', 'zip', 'rar');
-            $maxAllowedSize = 5000000; // 5 MB
-
             // mendapatkan nama file & ekstensinya
             $silabus = $_FILES['silabus'];
-            $breakFileName = explode('.', $silabus['name']);
-            $fileName = $breakFileName[0];
-            $fileExt = strtolower(end($breakFileName));
+            $breakFileName = break_filename($silabus);
+            $fileName = $breakFileName['name'];
+            $fileExt = $breakFileName['ext'];
+            $newFileName = $kodeSilabus.'_'.$fileName.'.'.$fileExt;     // nama file baru
+            $fileDestination = '../db/'.$newFileName;                   // lokasi tujuan penyimpanan file
 
-            // mendapatkan informasi file lainnya
-            $mimetype = $silabus['type'];
-            $fileSize = $silabus['size'];
-            $fileTmp = $silabus['tmp_name'];
-            $fileError = $silabus['error'];
+            // mengupload file silabus
+            $uploadRespons = upload_file($silabus, $fileDestination);
 
+            if ($uploadRespons['error'] === false) {
+                // menginputkan data file yang sudah diupload
+                $stmt = $conn->prepare("INSERT INTO Silabus (kode, mata_kuliah, nama_file, mimetype) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param('ssss', $kodeSilabus, $kodeMK, $newFileName, $silabus['type']);
 
-            // memastikan tidak ada error pada file & file yang diupload sesuai persyaratan
-            if ($fileError !== 0 || !in_array($fileExt, $allowedExt) || $fileSize > $maxAllowedSize) {
-                // jika file tidak sesuai persyaratan atau terjadi error
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat mengupload file! Pastikan file yang akan diupload sudah memenuhi persyaratan."
-                );
-            } else {
-
-                $newFileName = $kodeSilabus.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO Silabus (kode, mata_kuliah, nama_file, mimetype)
-                        VALUES ('$kodeSilabus', '$kodeMK', '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-
-                    // memberikan respon berhasil
-                    if ($uploadRespons) {
-                        $_SESSION['alert'] = array(
-                            'error' => FALSE,
-                            'message' => "File Silabus berhasil ditambahkan."
-                        );
-                    }
+                // mengeksekusi query & memberikan respons
+                if ($stmt->execute()) {
+                    $_SESSION['alert'] = array(
+                        'error' => false,
+                        'message' => "File Silabus berhasil ditambahkan."
+                    );
+                } else {
+                    $_SESSION['alert'] = array(
+                        'error' => true,
+                        'message' => "File Silabus gagal ditambahkan."
+                    );
                 }
+
+            } else {
+                $_SESSION['alert'] = array(
+                    'error' => $uploadRespons['error'],
+                    'message' => $uploadRespons['message']
+                );
             }
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
-
-
-    // mendapatkan data kelas dari mata kuliah ini
-    $klsResult = mysqli_query($conn, "SELECT * FROM Kelas WHERE mata_kuliah='$kodeMatkul' ORDER BY nama ASC");
-
-    if ($klsResult === FALSE) {
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => mysqli_error($conn)
-        );
-    }
-
-    // query untuk mendapatkan semua data dosen yang ada
-    $dosenResult = mysqli_query($conn, "SELECT kode, nama FROM Dosen");
-
-    if ($dosenResult === FALSE) {
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => mysqli_error($conn)
-        );
-    } else {
-        // mendapatkan list dosen dari hasil query ke dalam array
-        $listDosen = array();
-
-        while ($dosen = mysqli_fetch_assoc($dosenResult)) {
-            array_push($listDosen, $dosen);
-        }
-    }
-
-
-    // mendapatkan data rps mata kuliah
-    $rpsResult = mysqli_query($conn, "SELECT * FROM RPS WHERE mata_kuliah='$kodeMatkul'");
-
-    // mendapatkan data silabus mata kuliah
-    $silabusResult = mysqli_query($conn, "SELECT * FROM Silabus WHERE mata_kuliah='$kodeMatkul'");
 
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
-    if (isset($_SESSION['alert']) && $_SESSION['alert']) {
+    if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -496,6 +420,15 @@
                                     <input class="form-control" type="number" min="1" max="18" name="jml_pertemuan" id="jmlPertemuan" value="<?=$matkul['jml_pertemuan']?>">
                                     <div class="form-text">Berapa banyak alokasi pertemuan maksimal untuk mata kuliah ini. Default: 16 pertemuan</div>
                                 </article>
+                                <?php
+                                    // query untuk mendapatkan semua data dosen yang ada
+                                    $dosenResult = $conn->query("SELECT kode, nama FROM Dosen");
+                                    $listDosen = array();
+
+                                    while ($dosen = $dosenResult->fetch_assoc()) {
+                                        array_push($listDosen, $dosen);
+                                    }
+                                ?>
                                 <article class="mb-3">
                                     <label class="form-label" for="dosenPengampu1">Dosen Pengampu 1 :</label>
                                     <select class="form-select" name="dosen_pengampu1" id="dosenPengampu1" required>
@@ -580,7 +513,11 @@
         </section>
         <section class="mb-5">
             <h2>Daftar Kelas</h2>
-            <?php if (mysqli_num_rows($klsResult) > 0) : ?>
+            <?php
+                // mendapatkan data kelas dari mata kuliah ini
+                $klsResult = $conn->query("SELECT * FROM Kelas WHERE mata_kuliah='$kodeMatkul' ORDER BY nama ASC");
+            ?>
+            <?php if ($klsResult && $klsResult->num_rows > 0) : ?>
                 <div class="responsive-table">
                     <table class="mt-3 table table-bordered table-striped table-hover">
                         <thead class="text-center">
@@ -591,7 +528,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($kelas = mysqli_fetch_assoc($klsResult)) : ?>
+                            <?php while ($kelas = $klsResult->fetch_assoc()) : ?>
                                 <tr class="kelas" data-link="./kelas.php?kode=<?=$kelas['kode']?>">
                                     <td><?=$kelas['kode']?></td>
                                     <td><?=$kelas['nama']?></td>
@@ -607,12 +544,16 @@
         </section>
         <section class="mb-5">
             <h2>RPS</h2>
-            <?php if (mysqli_num_rows($rpsResult) > 0) : ?>
+            <?php
+                // mendapatkan data rps mata kuliah
+                $rpsResult = $conn->query("SELECT * FROM RPS WHERE mata_kuliah='$kodeMatkul'");
+            ?>
+            <?php if ($rpsResult && $rpsResult->num_rows > 0) : ?>
                 <div class="p-3 border bg-light">
-                    <?php while ($rps = mysqli_fetch_assoc($rpsResult)) :?>
-                        <a href="../db/<?=$rps['nama_file']?>" target="_blank" class="btn btn-success d-flex align-items-center justify-content-center gap-1">
-                            <span class="material-icons">download</span>
-                            <span>Unduh file RPS</span>
+                    <?php while ($rps = $rpsResult->fetch_assoc()) :?>
+                        <a href="../db/<?=$rps['nama_file']?>" class="btn btn-success d-flex align-items-center justify-content-center gap-1">
+                            <span class="material-icons">preview</span>
+                            <span>Lihat RPS</span>
                         </a>
                     <?php endwhile; ?>
                 </div>
@@ -633,7 +574,7 @@
                             </div>
                         </article>
                         <article class="mb-3 d-flex gap-2">
-                            <button id="tambahBrg" type="submit" name="upload_rps" class="btn btn-success flex-fill d-flex align-items-center justify-content-center gap-1">
+                            <button id="tambahBrg" type="submit" name="upload_rps" class="btn btn-secondary flex-fill d-flex align-items-center justify-content-center gap-1">
                                 <span class="material-icons">upload</span>
                                 <span>Upload RPS</span>
                             </button>
@@ -644,12 +585,16 @@
         </section>
         <section class="mb-4">
             <h2>Silabus</h2>
-            <?php if (mysqli_num_rows($silabusResult) > 0) : ?>
+            <?php
+                // mendapatkan data silabus mata kuliah
+                $silabusResult = $conn->query("SELECT * FROM Silabus WHERE mata_kuliah='$kodeMatkul'");
+            ?>
+            <?php if ($silabusResult && $silabusResult->num_rows > 0) : ?>
                 <div class="p-3 border bg-light">
-                    <?php while ($silabus = mysqli_fetch_assoc($silabusResult)) :?>
-                        <a href="../db/<?=$silabus['nama_file']?>" target="_blank" class="btn btn-success d-flex align-items-center justify-content-center gap-1">
-                            <span class="material-icons">download</span>
-                            <span>Unduh file Silabus</span>
+                    <?php while ($silabus = $silabusResult->fetch_assoc()) :?>
+                        <a href="../db/<?=$silabus['nama_file']?>" class="btn btn-success d-flex align-items-center justify-content-center gap-1">
+                            <span class="material-icons">preview</span>
+                            <span>Lihat Silabus</span>
                         </a>
                     <?php endwhile; ?>
                 </div>
@@ -670,7 +615,7 @@
                             </div>
                         </article>
                         <article class="mb-3 d-flex gap-2">
-                            <button id="tambahBrg" type="submit" name="upload_silabus" class="btn btn-success flex-fill d-flex align-items-center justify-content-center gap-1">
+                            <button id="tambahBrg" type="submit" name="upload_silabus" class="btn btn-secondary flex-fill d-flex align-items-center justify-content-center gap-1">
                                 <span class="material-icons">upload</span>
                                 <span>Upload Silabus</span>
                             </button>

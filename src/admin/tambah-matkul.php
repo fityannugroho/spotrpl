@@ -7,15 +7,17 @@
     // mengimport user-defined functions
     include '../includes/function.php';
 
+
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi admin tidak aktif, mengarahkan ke halaman utama admin.
     if (!isset($_SESSION['admin']) && !$_SESSION['admin']) {
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: ../admin.php?redirect=$redirectLink");
+        header("location: ../admin.php?redirect=$urlOfThisPage");
         exit;
     }
 
     if (isset($_POST['buat_matkul'])) {
-
         $kode = htmlspecialchars(strtoupper($_POST['kode']));
         $nama = htmlspecialchars($_POST['nama']);
         $semester = htmlspecialchars($_POST['semester']);
@@ -26,28 +28,23 @@
         $dosen1 = htmlspecialchars($_POST['dosen_pengampu1']);
         $dosen2 = (empty($_POST['dosen_pengampu2'])) ? null : htmlspecialchars($_POST['dosen_pengampu2']);
 
-        $stmt = mysqli_prepare($conn, "INSERT INTO Mata_Kuliah (kode, nama, semester, sks, thn_mulai, thn_selesai, jml_pertemuan, dosen_pengampu1, dosen_pengampu2)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        mysqli_stmt_bind_param($stmt, 'ssiississ', $kode, $nama, $semester, $sks, $thnMulai, $thnSelesai, $jmlPertemuan, $dosen1, $dosen2);
+        $stmt = $conn->prepare("INSERT INTO Mata_Kuliah (kode, nama, semester, sks, thn_mulai, thn_selesai, jml_pertemuan, dosen_pengampu1, dosen_pengampu2)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('ssiississ', $kode, $nama, $semester, $sks, $thnMulai, $thnSelesai, $jmlPertemuan, $dosen1, $dosen2);
 
-        if (mysqli_stmt_execute($stmt)) {
+        if ($stmt->execute()) {
             $_SESSION['alert'] = array(
                 'error' => FALSE,
                 'message' => "Mata Kuliah baru berhasil dibuat"
             );
-
             // redirect ke main page
             header('location: ../admin.php');
             exit;
 
         } else {
             // memberikan respon gagal
-            $errCode = mysqli_errno($conn);
-            $errorMsg = mysqli_error($conn);
             $duplicatePKErr = 1062;
-
-            if ($errCode === $duplicatePKErr) {
+            if ($conn->errno === $duplicatePKErr) {
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
                     'message' => "Kode Mata Kuliah <b>'$kode'</b> sudah terpakai! Harap gunakan kode lain."
@@ -55,38 +52,20 @@
             } else {
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat menambahkan data mata kuliah.<br><i>$errorMsg!</i>"
+                    'message' => "Terjadi kesalahan saat menambahkan data mata kuliah.<br><i>$conn->error!</i>"
                 );
             }
         }
     }
 
-    // query untuk mendapatkan semua data dosen yang ada
-    $dosenResult = mysqli_query($conn, "SELECT kode, nama FROM Dosen");
-
-    if ($dosenResult === FALSE) {
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => mysqli_error($conn)
-        );
-    } else {
-        // mendapatkan list dosen dari hasil query ke dalam array
-        $listDosen = array();
-
-        while ($dosen = mysqli_fetch_assoc($dosenResult)) {
-            array_push($listDosen, $dosen);
-        }
-    }
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
     if (isset($_SESSION['alert']) && $_SESSION['alert']) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -154,6 +133,22 @@
                 <input class="form-control" type="number" min="1" max="18" name="jml_pertemuan" id="jmlPertemuan">
                 <div class="form-text">Berapa banyak alokasi pertemuan maksimal untuk mata kuliah ini. Default: 16 pertemuan</div>
             </article>
+            <?php
+                // query untuk mendapatkan semua data dosen yang ada
+                $dosenResult = $conn->query("SELECT kode, nama FROM Dosen");
+                if ($dosenResult === FALSE) {
+                    $_SESSION['alert'] = array(
+                        'error' => TRUE,
+                        'message' => $conn->error
+                    );
+                } else {
+                    // mendapatkan list dosen dari hasil query ke dalam array
+                    $listDosen = array();
+                    while ($dosen = $dosenResult->fetch_assoc()) {
+                        array_push($listDosen, $dosen);
+                    }
+                }
+            ?>
             <article class="mb-3">
                 <label class="form-label" for="dosenPengampu1">Dosen Pengampu 1 :</label>
                 <select class="form-select" name="dosen_pengampu1" id="dosenPengampu1" required>

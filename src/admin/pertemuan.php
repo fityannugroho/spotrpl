@@ -7,22 +7,25 @@
     // mengimport user-defined functions
     include '../includes/function.php';
 
+
     // memastikan URL valid
     if (!isset($_GET['kode']) || empty($_GET['kode'])) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
             'message' => "URL tidak valid."
         );
-
         // mengarahkan kembali ke halaman utama admin
         header("location: ../admin.php");
         exit;
     }
 
+
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi admin tidak aktif, mengarahkan ke halaman utama admin.
     if (!isset($_SESSION['admin']) && !$_SESSION['admin']) {
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: ../admin.php?redirect=$redirectLink");
+        header("location: ../admin.php?redirect=$urlOfThisPage");
         exit;
     }
 
@@ -31,10 +34,10 @@
     $kodeMeeting = $_GET['kode'];
 
     // mengeksekusi query untuk mendapatkan data pertemuan
-    $meetingResult = mysqli_query($conn, "SELECT * FROM Pertemuan WHERE kode='$kodeMeeting'");
+    $meetingResult = $conn->query("SELECT * FROM Pertemuan WHERE kode='$kodeMeeting'");
 
-    if (mysqli_num_rows($meetingResult) !== 1) {
-        if (mysqli_num_rows($meetingResult) === 0) {
+    if ($meetingResult->num_rows !== 1) {
+        if ($meetingResult->num_rows === 0) {
             // jika data pertemuan tidak ditemukan pada database
             $_SESSION['alert'] = array(
                 'error' => TRUE,
@@ -42,11 +45,9 @@
             );
         } else {
             // memberikan respon gagal lainnya
-            $errMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan! <i>$errMsg</i>"
+                'message' => "Terjadi kesalahan! <i>$conn->error</i>"
             );
         }
         // mengarahkan kembali ke halaman utama admin
@@ -55,7 +56,7 @@
     }
 
     // mendapatkan data pertemuan
-    $pertemuan = mysqli_fetch_assoc($meetingResult);
+    $pertemuan = $meetingResult->fetch_assoc();
     $waktuAkses = explode(' ', $pertemuan['waktu_akses']);
     $tglAkses = $waktuAkses[0];
     $jamAkses = substr($waktuAkses[1], 0, -3);
@@ -63,27 +64,24 @@
 
     // menangani form hapus pertemuan
     if (isset($_POST['hapus_pertemuan'])) {
-
         $kodePertemuan = htmlspecialchars($_POST['kode_pertemuan']);
         $kodeKelas = htmlspecialchars($_POST['kode_kelas']);
 
-        $deleteRespons = mysqli_query($conn, "DELETE FROM Pertemuan WHERE kode='$kodePertemuan'");
+        $deleteRespons = $conn->query("DELETE FROM Pertemuan WHERE kode='$kodePertemuan'");
 
         if ($deleteRespons) {
             $_SESSION['alert'] = array(
                 'error' => FALSE,
                 'message' => "Data Pertemuan berhasil dihapus."
             );
-
             header("location: ./kelas.php?kode=$kodeKelas");
             exit;
+
         } else {
             // memberikan respon gagal
-            $errorMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan saat menghapus data.<br><i>$errorMsg!</i>"
+                'message' => "Terjadi kesalahan saat menghapus data.<br><i>$conn->error!</i>"
             );
         }
     }
@@ -91,15 +89,12 @@
 
     // menghandle form ubah data pertemuan
     if (isset($_POST['ubah_pertemuan'])) {
-
         $nomorPert = htmlspecialchars($_POST['nomor_pert']);
         $topik = htmlspecialchars($_POST['topik']);
         $deskripsi = htmlspecialchars($_POST['deskripsi']);
         $waktuAkses = htmlspecialchars($_POST['tgl_akses']).' '.htmlspecialchars($_POST['jam_akses']);
 
-
-        $updateQuery = "UPDATE Pertemuan SET nomor_pert='$nomorPert', topik='$topik', deskripsi='$deskripsi', waktu_akses='$waktuAkses' WHERE kode='$kodeMeeting'";
-        $updateResult = mysqli_query($conn, $updateQuery);
+        $updateResult = $conn->query("UPDATE Pertemuan SET nomor_pert='$nomorPert', topik='$topik', deskripsi='$deskripsi', waktu_akses='$waktuAkses' WHERE kode='$kodeMeeting'");
 
         // memberikan respon berhasil
         if ($updateResult) {
@@ -109,23 +104,19 @@
             );
         } else {
             // memberikan respon gagal
-            $errorMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan saat merubah data.<br><i>$errorMsg!</i>"
+                'message' => "Terjadi kesalahan saat merubah data.<br><i>$conn->error!</i>"
             );
         }
-
         // memuat ulang halaman agar perubahan dapat dimunculkan
-        header("location: ./pertemuan.php?kode=$kodeMeeting");
+        header("location: $urlOfThisPage");
         exit;
     }
 
 
     // menghandle form upload materi
     if (isset($_POST['upload_materi'])) {
-
         $judul = htmlspecialchars($_POST['judul']);
         $deskripsi = htmlspecialchars($_POST['deskripsi']);
         $jenisMateri = htmlspecialchars($_POST['jenis_materi']);
@@ -134,72 +125,53 @@
         // mencari kode yang belum terpakai
         do {
             $kode = code_generator(5, 'MTR');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Materi WHERE kode='$kode'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
-
+            $checkPK = $conn->query("SELECT * FROM Materi WHERE kode='$kode'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
         $uploadRespons = FALSE;
 
         if ($jenisMateri === 'url') {
             $url = htmlspecialchars($_POST['url']);
-
-            $uploadRespons = mysqli_query($conn, "INSERT INTO Materi (kode, pertemuan, judul, deskripsi, `url`)
-                VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$url')
-            ");
+            $uploadRespons = $conn->query("INSERT INTO Materi (kode, pertemuan, judul, deskripsi, `url`)
+                VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$url')");
 
         } elseif ($jenisMateri === 'file') {
-
-            $allowedExt = array('jpg', 'jpeg', 'png', 'pdf', 'pptx', 'docx', 'zip', 'rar');
-            $maxAllowedSize = 5000000; // 5 MB
-
             // mendapatkan nama file & ekstensinya
-            $breakFileName = explode('.', $_FILES['file_materi']['name']);
-            $fileName = $breakFileName[0];
-            $fileExt = strtolower(end($breakFileName));
+            $breakFileName = break_filename($_FILES['file_materi']);
+            $fileName = $breakFileName['name'];
+            $fileExt = $breakFileName['ext'];
+            $newFileName = $kode.'_'.$fileName.'.'.$fileExt;    // nama file baru
+            $fileDestination = '../db/'.$newFileName;           // lokasi tujuan penyimpanan file
 
-            // mendapatkan informasi file lainnya
-            $mimetype = $_FILES['file_materi']['type'];
-            $fileSize = $_FILES['file_materi']['size'];
-            $fileTmp = $_FILES['file_materi']['tmp_name'];
-            $fileError = $_FILES['file_materi']['error'];
+            // mengupload file materi
+            $fileUpload = upload_file($_FILES['file_materi'], $fileDestination);
 
-            // memastikan tidak ada error pada file & file yang diupload sesuai persyaratan
-            if ($fileError !== 0 || !in_array($fileExt, $allowedExt) || $fileSize > $maxAllowedSize) {
-                // jika file tidak sesuai persyaratan atau terjadi error
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat mengupload file! Pastikan file yang akan diupload sudah memenuhi persyaratan."
-                );
+            if ($fileUpload['error'] === false) {
+                // menginputkan data file yang sudah diupload
+                $uploadRespons = $conn->query("INSERT INTO Materi (kode, pertemuan, judul, deskripsi, nama_file, mimetype)
+                    VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$newFileName', '$mimetype')");
+
             } else {
-
-                $newFileName = $kode.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO Materi (kode, pertemuan, judul, deskripsi, nama_file, mimetype)
-                        VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-                }
+                $_SESSION['alert'] = array(
+                    'error' => $fileUpload['error'],
+                    'message' => $fileUpload['message']
+                );
             }
         }
         // memberikan respon berhasil
         if ($uploadRespons) {
             $_SESSION['alert'] = array(
-                'error' => FALSE,
-                'message' => "Materi baru berhasil ditambahkan."
+                'error' => false,
+                'message' => "File Materi berhasil ditambahkan."
             );
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
 
 
     // menghandle form buat tugas baru
     if (isset($_POST['buat_tugas'])) {
-
         $judul = htmlspecialchars($_POST['judul']);
         $deskripsi = htmlspecialchars($_POST['deskripsi']);
         $tglDeadline = htmlspecialchars($_POST['tgl_deadline']);
@@ -211,9 +183,8 @@
         // mencari kode yang belum terpakai
         do {
             $kode = code_generator(5, 'TGS');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Tugas WHERE kode='$kode'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
-
+            $checkPK = $conn->query("SELECT * FROM Tugas WHERE kode='$kode'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
         $uploadRespons = FALSE;
 
@@ -221,48 +192,30 @@
         $emptyFileErrCode = 4;
         if ($lampiran['error'] === $emptyFileErrCode) {
             // mengupload tugas tanpa lampiran
-            $uploadRespons = mysqli_query($conn, "INSERT INTO Tugas (kode, pertemuan, judul, deskripsi, deadline)
-                VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$deadline')
-            ");
+            $uploadRespons = $conn->query("INSERT INTO Tugas (kode, pertemuan, judul, deskripsi, deadline)
+                VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$deadline')");
 
         } else {
-
-            $allowedExt = array('jpg', 'jpeg', 'png', 'pdf', 'pptx', 'docx', 'zip', 'rar');
-            $maxAllowedSize = 5000000; // 5 MB
-
             // mendapatkan nama file & ekstensinya
-            $breakFileName = explode('.', $lampiran['name']);
-            $fileName = $breakFileName[0];
-            $fileExt = strtolower(end($breakFileName));
+            $breakFileName = break_filename($lampiran);
+            $fileName = $breakFileName['name'];
+            $fileExt = $breakFileName['ext'];
+            $newFileName = $kode.'_'.$fileName.'.'.$fileExt;    // nama file baru
+            $fileDestination = '../db/'.$newFileName;           // lokasi tujuan penyimpanan file
 
-            // mendapatkan informasi file lainnya
-            $mimetype = $lampiran['type'];
-            $fileSize = $lampiran['size'];
-            $fileTmp = $lampiran['tmp_name'];
-            $fileError = $lampiran['error'];
+            // mengupload file lampiran
+            $fileUpload = upload_file($lampiran, $fileDestination);
 
-            // memastikan tidak ada error pada file & file yang diupload sesuai persyaratan
-            if ($fileError !== 0 || !in_array($fileExt, $allowedExt) || $fileSize > $maxAllowedSize) {
-                // jika file tidak sesuai persyaratan atau terjadi error
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat mengupload file lampiran! Pastikan file lampiran yang akan diupload sudah memenuhi persyaratan."
-                );
+            if ($fileUpload['error'] === false) {
+                // menyimpan data tugas baru beserta nama file lampirannya
+                $uploadRespons = mysqli_query($conn, "INSERT INTO Tugas (kode, pertemuan, judul, deskripsi, deadline, lampiran, mimetype)
+                    VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$deadline', '$newFileName', '$mimetype')");
+
             } else {
-
-                $newFileName = $kode.'_'.$fileName.'.'.$fileExt;        // nama file baru
-                $fileDestination = '../db/'.$newFileName;            // lokasi tujuan penyimpanan file
-
-                // mengupload file direktori server & menginsert data materi ke database mysql
-                if (move_uploaded_file($fileTmp, $fileDestination)) {
-
-                    // query untuk menyimpan data materi ke database mysql
-                    $insertQuery = "INSERT INTO Tugas (kode, pertemuan, judul, deskripsi, deadline, lampiran, mimetype)
-                        VALUES ('$kode', '$kodeMeeting', '$judul', '$deskripsi', '$deadline', '$newFileName', '$mimetype')
-                    ";
-
-                    $uploadRespons = mysqli_query($conn, $insertQuery);
-                }
+                $_SESSION['alert'] = array(
+                    'error' => $fileUpload['error'],
+                    'message' => $fileUpload['message']
+                );
             }
         }
         // memberikan respon berhasil
@@ -272,12 +225,13 @@
                 'message' => "Tugas baru berhasil dibuat."
             );
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
 
 
     // menghandle form buat ujian baru
     if (isset($_POST['buat_ujian'])) {
-
         $durasi = htmlspecialchars($_POST['durasi']);
         $catatan = htmlspecialchars($_POST['catatan']);
         $kode = '';
@@ -285,13 +239,11 @@
         // mencari kode yang belum terpakai
         do {
             $kode = code_generator(5, 'UJI');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Ujian WHERE kode='$kode'");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+            $checkPK = $conn->query("SELECT * FROM Ujian WHERE kode='$kode'");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
-
-        $insertRespons = mysqli_query($conn, "INSERT INTO Ujian (kode, pertemuan, durasi, catatan)
-            VALUES ('$kode', '$kodeMeeting', '$durasi', '$catatan')
-        ");
+        $insertRespons = $conn->query("INSERT INTO Ujian (kode, pertemuan, durasi, catatan)
+            VALUES ('$kode', '$kodeMeeting', '$durasi', '$catatan')");
 
         if ($insertRespons) {
             $_SESSION['alert'] = array(
@@ -300,29 +252,26 @@
             );
         } else {
             // memberikan respon gagal
-            $errCode = mysqli_errno($conn);
             $duplicatePKErrCode = 1062;
-
-            if ($errCode === $duplicatePKErrCode) {
+            if ($conn->errno === $duplicatePKErrCode) {
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
                     'message' => "Kode Ujian <b>$kode</b> sudah terpakai! Harap gunakan kode lain."
                 );
             } else {
-                $errorMsg = mysqli_error($conn);
-
                 $_SESSION['alert'] = array(
                     'error' => TRUE,
-                    'message' => "Terjadi kesalahan saat membuat ujian.<br><i>$errorMsg!</i>"
+                    'message' => "Terjadi kesalahan saat membuat ujian.<br><i>$conn->error!</i>"
                 );
             }
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
 
 
     // menangani form daftar kehadiran mahasiswa
     if (isset($_POST['simpan_presensi'])) {
-
         $kodeArr = $_POST['kode'];
         $kehadiranArr = $_POST['kehadiran'];
         $keteranganArr = $_POST['keterangan'];
@@ -330,12 +279,8 @@
         $countErrors = 0;
         $i = 0;
         foreach ($kodeArr as $kode) {
-            $updateQuery = "UPDATE Kehadiran SET hadir=$kehadiranArr[$i], keterangan='$keteranganArr[$i]' WHERE kode='$kode'";
-            $updateRespon = mysqli_query($conn, $updateQuery);
-
-            if ($updateRespon === FALSE) {
-                $countErrors++;
-            }
+            $updateRespons = $conn->query("UPDATE Kehadiran SET hadir=$kehadiranArr[$i], keterangan='$keteranganArr[$i]' WHERE kode='$kode'");
+            if ($updateRespons === FALSE) $countErrors++;
             $i++;
         }
 
@@ -351,15 +296,17 @@
                 'message' => "Terjadi kesalahan saat mengupdate $countErrors baris!"
             );
         }
+        header("location: $urlOfThisPage");
+        exit;
     }
 
 
     // mengeksekusi query untuk mendapatkan data kelas
     $kodeKelas = $pertemuan['kelas'];
-    $klsResult = mysqli_query($conn, "SELECT * FROM Kelas WHERE kode='$kodeKelas'");
+    $klsResult = $conn->query("SELECT * FROM Kelas WHERE kode='$kodeKelas'");
 
-    if (mysqli_num_rows($klsResult) !== 1) {
-        if (mysqli_num_rows($klsResult) === 0) {
+    if ($klsResult && $klsResult->num_rows !== 1) {
+        if ($klsResult->num_rows === 0) {
             // jika data kelas tidak ditemukan pada database
             $_SESSION['alert'] = array(
                 'error' => TRUE,
@@ -367,11 +314,9 @@
             );
         } else {
             // memberikan respon gagal lainnya
-            $errMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan! <i>$errMsg</i>"
+                'message' => "Terjadi kesalahan! <i>$conn->error</i>"
             );
         }
         // mengarahkan kembali ke halaman utama admin
@@ -380,14 +325,14 @@
     }
 
     // mendapatkan data kelas
-    $kelas = mysqli_fetch_assoc($klsResult);
+    $kelas = $klsResult->fetch_assoc();
 
     // mengeksekusi query untuk mendapatkan data mata kuliah dari pertemuan ini
     $kodeMK = $kelas['mata_kuliah'];
-    $mkResult = mysqli_query($conn, "SELECT * FROM Mata_Kuliah WHERE kode='$kodeMK'");
+    $mkResult = $conn->query("SELECT * FROM Mata_Kuliah WHERE kode='$kodeMK'");
 
-    if ($mkResult && mysqli_num_rows($mkResult) !== 1) {
-        if (mysqli_num_rows($mkResult) === 0) {
+    if ($mkResult && $mkResult->num_rows !== 1) {
+        if ($mkResult->num_rows === 0) {
             // jika data mata kuliah tidak ditemukan pada database
             $_SESSION['alert'] = array(
                 'error' => TRUE,
@@ -395,11 +340,9 @@
             );
         } else {
             // memberikan respon gagal lainnya
-            $errMsg = mysqli_error($conn);
-
             $_SESSION['alert'] = array(
                 'error' => TRUE,
-                'message' => "Terjadi kesalahan! <i>$errMsg</i>"
+                'message' => "Terjadi kesalahan! <i>$conn->error</i>"
             );
         }
         // mengarahkan kembali ke halaman utama admin
@@ -408,64 +351,16 @@
     }
 
     // mendapatkan data mata kuliah
-    $matkul = mysqli_fetch_assoc($mkResult);
+    $matkul = $mkResult->fetch_assoc();
 
-    // mengeksekusi query untuk mendapatkan data materi dari pertemuan ini
-    $listMateri = call_procedure($conn, "materi_pertemuan('$kodeMeeting')");
-
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Terjadi kesalahan saat mengambil data materi! <i>$errMsg</i> $errCode"
-        );
-    }
-
-
-    // mengeksekusi query untuk mendapatkan data tugas dari pertemuan ini
-    $tugasResult = mysqli_query($conn, "SELECT * FROM Tugas WHERE pertemuan='$kodeMeeting'");
-
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Terjadi kesalahan saat mengambil data tugas! <i>$errMsg</i> $errCode"
-        );
-    }
-
-
-    // mengeksekusi query untuk mendapatkan data ujian dari pertemuan ini
-    $ujianResult = mysqli_query($conn, "SELECT * FROM Ujian WHERE pertemuan='$kodeMeeting'");
-
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Terjadi kesalahan saat mengambil data ujian! <i>$errMsg</i> $errCode"
-        );
-    }
-
-
-    // mengeksekusi query untuk mendapatkan data kehadiran dari pertemuan ini
-    $listPresensi = call_procedure($conn, "absensi_pertemuan('$kodeMeeting')");
-
-    if ($errCode = mysqli_errno($conn) !== 0) {
-        $errMsg = mysqli_error($conn);
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Terjadi kesalahan saat mengambil data presensi! <i>$errMsg</i> $errCode"
-        );
-    }
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
-    if (isset($_SESSION['alert']) && $_SESSION['alert']) {
+    if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -803,6 +698,16 @@
         </section>
         <section class="mb-5">
             <h3>Daftar Materi</h3>
+            <?php
+                // mendapatkan data materi dari pertemuan ini
+                $listMateri = call_procedure($conn, "materi_pertemuan('$kodeMeeting')");
+                if ($errCode = $conn->errno !== 0) {
+                    $_SESSION['alert'] = array(
+                        'error' => TRUE,
+                        'message' => "Terjadi kesalahan saat mengambil data materi! <i>$conn->error</i> $errCode"
+                    );
+                }
+            ?>
             <?php if (sizeof($listMateri) > 0) : ?>
                 <div class="responsive-table">
                     <table class="mt-3 table table-bordered table-striped table-hover">
@@ -836,7 +741,17 @@
         </section>
         <section class="mb-5">
             <h3>Daftar Tugas</h3>
-            <?php if ($tugasResult && mysqli_num_rows($tugasResult) > 0) : ?>
+            <?php
+                // mendapatkan data tugas dari pertemuan ini
+                $tugasResult = $conn->query("SELECT * FROM Tugas WHERE pertemuan='$kodeMeeting'");
+                if ($errCode = mysqli_errno($conn) !== 0) {
+                    $_SESSION['alert'] = array(
+                        'error' => TRUE,
+                        'message' => "Terjadi kesalahan saat mengambil data tugas! <i>$conn->error</i> $errCode"
+                    );
+                }
+            ?>
+            <?php if ($tugasResult && $tugasResult->num_rows > 0) : ?>
                 <div class="responsive-table">
                     <table class="mt-3 table table-bordered table-striped table-hover">
                         <thead class="text-center">
@@ -849,7 +764,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($tugas = mysqli_fetch_assoc($tugasResult)) : ?>
+                            <?php while ($tugas = $tugasResult->fetch_assoc()) : ?>
                                 <tr class="" data-link="">
                                     <td><?=$tugas['kode']?></td>
                                     <td><?=$tugas['judul']?></td>
@@ -871,7 +786,17 @@
             </section>
         <section class="mb-5">
             <h3>Daftar Evaluasi</h3>
-            <?php if ($ujianResult && mysqli_num_rows($ujianResult) > 0) : ?>
+            <?php
+                // mendapatkan data ujian dari pertemuan ini
+                $ujianResult = $conn->query("SELECT * FROM Ujian WHERE pertemuan='$kodeMeeting'");
+                if ($errCode = mysqli_errno($conn) !== 0) {
+                    $_SESSION['alert'] = array(
+                        'error' => TRUE,
+                        'message' => "Terjadi kesalahan saat mengambil data ujian! <i>$conn->error</i> $errCode"
+                    );
+                }
+            ?>
+            <?php if ($ujianResult && $ujianResult->num_rows > 0) : ?>
                 <div class="responsive-table">
                     <table class="mt-3 table table-bordered table-striped table-hover">
                         <thead class="text-center">
@@ -882,7 +807,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($ujian = mysqli_fetch_assoc($ujianResult)) : ?>
+                            <?php while ($ujian = $ujianResult->fetch_assoc()) : ?>
                                 <tr class="ujian" data-link="./ujian.php?kode=<?=$ujian['kode']?>">
                                     <td><?=$ujian['kode']?></td>
                                     <td class="text-center"><?=$ujian['durasi']?></td>
@@ -898,6 +823,16 @@
         </section>
         <section class="mb-5">
             <h3>Daftar Kehadiran Mahasiswa</h3>
+            <?php
+                // mengeksekusi query untuk mendapatkan data kehadiran dari pertemuan ini
+                $listPresensi = call_procedure($conn, "absensi_pertemuan('$kodeMeeting')");
+                if ($errCode = mysqli_errno($conn) !== 0) {
+                    $_SESSION['alert'] = array(
+                        'error' => TRUE,
+                        'message' => "Terjadi kesalahan saat mengambil data presensi! <i>$conn->error</i> $errCode"
+                    );
+                }
+            ?>
             <?php if (sizeof($listPresensi) > 0) : ?>
                 <form action="./pertemuan.php?kode=<?=$kodeMeeting?>" method="post">
                     <div class="responsive-table">
@@ -977,11 +912,10 @@
             trigger.addEventListener('click', () => {
                 checkValues.forEach((checkValue) => {
                     if (trigger.getAttribute('data-id') == checkValue.getAttribute('data-id')) {
-                        if (trigger.checked) {
+                        if (trigger.checked)
                             checkValue.value = 1;
-                        } else {
+                        else
                             checkValue.value = 0;
-                        }
                     }
                 });
             });
