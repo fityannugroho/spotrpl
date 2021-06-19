@@ -32,13 +32,15 @@
     // mendapatkan kode ujian
     $kodeUjian = $_GET['ujian'];
 
+    $listJwb = call_procedure($conn, "get_exam_answer('$kodeUjian', '$nim')");
+
     // mengambil data jawaban ujian mhs soal PG
     $listJwbPG = call_procedure($conn, "get_pg_answer('$kodeUjian', '$nim')");
 
     // mengambil data jawaban ujian mhs soal Esai
     $listJwbEsai = call_procedure($conn, "get_esai_answer('$kodeUjian', '$nim')");
 
-    if (sizeof($listJwbPG) === 0) {
+    if (sizeof($listJwb) === 0) {
         $_SESSION['alert'] = array(
             'error' => TRUE,
             'message' => "Data jawaban tidak ditemukan."

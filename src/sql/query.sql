@@ -575,6 +575,24 @@ DELIMITER ;
 
 --
 DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS get_exam_answer (
+    IN kode_ujian VARCHAR(8),
+    IN nim VARCHAR(7)
+)
+BEGIN
+    SELECT
+        soal AS kode_soal,
+        jawaban,
+        poin
+    FROM Jawaban_Ujian
+    WHERE ujian = kode_ujian AND mahasiswa = nim
+    ORDER BY soal ASC;
+END //
+DELIMITER ;
+
+
+--
+DELIMITER //
 CREATE PROCEDURE IF NOT EXISTS get_pg_answer (
     IN kode_ujian VARCHAR(8),
     IN nim VARCHAR(7)

@@ -507,9 +507,9 @@
                             <?php
                                 // mengambil list jwb PG mhs
                                 $nim = $nilaiUjian['nim'];
-                                $listJwbPG = call_procedure($conn, "get_pg_answer('$kodeUjian', '$nim')");
+                                $listJwb = call_procedure($conn, "get_exam_answer('$kodeUjian', '$nim')");
                             ?>
-                            <?php if (sizeof($listJwbPG) > 0) : ?>
+                            <?php if (sizeof($listJwb) > 0) : ?>
                                 <tr class="jwb-mhs" data-link="./nilai.php?mhs=<?=$nim?>&ujian=<?=$kodeUjian?>">
                                     <td><?=$nilaiUjian['nim']?></td>
                                     <td><?=$nilaiUjian['nama_lengkap']?></td>
