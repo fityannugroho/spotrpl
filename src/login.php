@@ -1,73 +1,54 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
+    // mengimport koneksi database ($conn) dan functions
     require './includes/db-connect.php';
+    require './includes/function.php';
+
+    $redirect = (isset($_GET['redirect']) && !empty($_GET['redirect'])) ? $_GET['redirect'] : null;
 
     // mengalihkan ke dashboard jika sesi login aktif
-    if(isset($_SESSION['login']) && $_SESSION['login']) {
-        header('location: dashboard.php');
+    if (isset($_SESSION['login']) && $_SESSION['login']) {
+        if (!empty($redirect)) header("location: $redirect");
+        else header('location: dashboard.php');
         exit;
-    }
-
-    if (isset($_GET['redirect']) && !empty($_GET['redirect'])) {
-        $redirect = $_GET['redirect'];
     }
 
     // mengirim data form jika tombol submit diklik
     if (isset($_POST['submit'])) {
-
         $username = htmlspecialchars($_POST['username']);
         $password = htmlspecialchars($_POST['password']);
 
         // mencari data dari tabel Mahasiswa menggunakan Primary Key (PK)
-        $searchQuery = "SELECT * FROM Mahasiswa WHERE nim='$username'";
-        $queryRespons = mysqli_query($conn, $searchQuery);
+        $queryRespons = $conn->query("SELECT * FROM Mahasiswa WHERE nim='$username'");
 
         // jika ditemukan data dengan PK yang sesuai
-        if (mysqli_num_rows($queryRespons) === 1) {
-
-            // menyimpan data user ke bentuk array asosiatif
-            $userData = mysqli_fetch_assoc($queryRespons);
+        if ($queryRespons && $queryRespons->num_rows === 1) {
+            $userData = $queryRespons->fetch_assoc();
 
             // verifikasi kata sandi
             if (password_verify($password, $userData['kata_sandi'])) {
-
-                // jika kata sandi terverifikasi
-                // membuat sesi login
+                // jika kata sandi terverifikasi, membuat sesi login
                 $_SESSION['login'] = TRUE;
                 $_SESSION['user'] = array(
                     'id' => $userData['nim'],
                     'name' => $userData['nama_lengkap']
                 );
 
-                if (isset($redirect)) {
-                    // mengarahkan ke halaman tertentu
-                    header("location: $redirect");
-                    exit;
-                } else {
-                    // mengarahkan ke halaman dashboard
-                    header('location: dashboard.php');
-                    exit;
-                }
-
-            } else {
-
-                // jika kata sandi tidak sesuai
-                echo "<script>alert('Login gagal! Harap cek kembali Kata Sandi yang Anda masukkan.')</script>";
-            }
-        } else {
-
-            // jika data tidak ditemukan
-            $errCode = mysqli_errno($conn);
-            $PKNotFoundCode = 0;
-
-            if ($errCode === $PKNotFoundCode) {
-                echo "<script>alert('Login gagal! Username yang Anda masukkan tidak ditemukan.')</script>";
-            } else {
-                echo "<script>alert('Login gagal! (Kode Error: $errCode)')</script>";
+                // mengarahkan ke halaman tertentu atau ke halaman dashboard
+                if (!empty($redirect)) header("location: $redirect");
+                else header('location: dashboard.php');
+                exit;
             }
         }
+
+        $_SESSION['alert'] = array(
+            'error' => TRUE,
+            'message' => "Login gagal! Username atau kata sandi tidak sesuai."
+        );
+
+        // jika terjadi error selain karena username / password yang salah (MySQL Error)
+        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
     }
 ?>
 <!DOCTYPE html>
@@ -82,6 +63,12 @@
     <title>Masuk | SPOT RPL</title>
 </head>
 <body class="fullpage">
+    <?php if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) : ?>
+        <script>alert("<?=$_SESSION['alert']['message']?>")</script>
+    <?php
+        $_SESSION['alert'] = null;
+        endif;
+    ?>
     <div class="responsive-center-box">
         <section class="desc-box">
             <div class="title">

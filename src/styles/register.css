@@ -2,22 +2,6 @@
     box-sizing: border-box;
 }
 
-.selector {
-    display: inline-flex;
-    flex-direction: column;
-    color: #ffffff;
-    gap: 0.4rem;
-    font-size: 1.4rem;
-}
-
-.selector select {
-    padding: 4px 16px 4px 4px;
-    border: none;
-    background: #ffffff url('../assets/drop-down-arrow.png') no-repeat;
-    font-size: 1.6rem;
-    font-weight: bold;
-}
-
 form {
     margin-top: 2rem;
 }

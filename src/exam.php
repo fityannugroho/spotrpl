@@ -17,18 +17,19 @@
     // mendapatkan kode ujian yang akan diakses
     $kodeUjian = $_GET['kode'];
 
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi login tidak aktif atau user tidak valid
     if (!isset($_SESSION['login']) || !$_SESSION['login'] || !isset($_SESSION['user']) || empty($_SESSION['user'])) {
-        // mengarahkan ke halaman login
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: login.php?redirect=$redirectLink");
+        header("location: login.php?redirect=$urlOfThisPage");
         exit;
     }
+
 
     // mendapatkan NIM & nama dari user yang sedang login
     $nim = $_SESSION['user']['id'];
     $nama = $_SESSION['user']['name'];
-
 
     // mendapatkan data ujian
     $listUjian = call_procedure($conn, "detail_ujian('$kodeUjian')");
@@ -38,13 +39,13 @@
             'error' => TRUE,
             'message' => "Kode Ujian <b>$kodeUjian</b> tidak ditemukan! Pastikan link ujian Anda sudah benar."
         );
+        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
 
         header('location: ./not-found.php');
         exit;
     }
 
     $ujian = (sizeof($listUjian) === 1) ? $listUjian[0] : $listUjian;
-
     $durasi = strtotime($ujian['durasi']);
     $durasi = date('G', $durasi).' Jam '.date('i', $durasi).' Menit';
 
@@ -52,17 +53,17 @@
     // mendapatkan data soal
     $listSoalPG = call_procedure($conn, "ambil_soal_pg('$kodeUjian')");
     $listSoalEsai = call_procedure($conn, "ambil_soal_esai('$kodeUjian')");
+    if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
+
     $jmlSoalPG = sizeof($listSoalPG);
     $jmlSoalEsai = sizeof($listSoalEsai);
     $jmlSoal = $jmlSoalPG + $jmlSoalEsai;
 
 
-    if (isset($_POST['start_exam'])) {
-        $_SESSION['is_exam'] = $_POST['exam_session_id'];
-    }
+    if (isset($_POST['start_exam'])) $_SESSION['is_exam'] = $_POST['exam_session_id'];
 
     if (isset($_POST['finish_exam'])) {
-        $_SESSION['is_exam'] = NULL;
+        $_SESSION['is_exam'] = null;
 
         // mendapatkan list kode soal pada ujian ini
         $listKodeSoalPG = array();
@@ -70,16 +71,12 @@
 
         foreach ($listSoalPG as $soalPG) {
             foreach ($soalPG as $field => $value) {
-                if ($field == 'kode_soal') {
-                    array_push($listKodeSoalPG, $value);
-                }
+                if ($field == 'kode_soal') array_push($listKodeSoalPG, $value);
             }
         }
         foreach ($listSoalEsai as $soalEsai) {
             foreach ($soalEsai as $field => $value) {
-                if ($field === 'kode_soal') {
-                    array_push($listKodeSoalEsai, $value);
-                }
+                if ($field === 'kode_soal') array_push($listKodeSoalEsai, $value);
             }
         }
 
@@ -89,13 +86,10 @@
 
         foreach ($_POST as $field => $value) {
             // mendapatkan list jwb PG
-            if (in_array($field, $listKodeSoalPG)) {
-                array_push($listJwbPG, $value);
-            }
+            if (in_array($field, $listKodeSoalPG)) array_push($listJwbPG, $value);
+
             // mendapatkan list jwb Esai
-            if (in_array($field, $listKodeSoalEsai)) {
-                array_push($listJwbEsai, $value);
-            }
+            if (in_array($field, $listKodeSoalEsai)) array_push($listJwbEsai, $value);
         }
 
         $kodeUjian = $ujian['kode_ujian'];
@@ -109,13 +103,12 @@
             // mencari kode yang belum terpakai
             do {
                 $kodeJwb = code_generator(5, 'JWB');
-                $checkPK = mysqli_query($conn, "SELECT * FROM Jawaban_Ujian WHERE kode='$kodeJwb'");
-            } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+                $checkPK = $conn->query("SELECT * FROM Jawaban_Ujian WHERE kode='$kodeJwb'");
+            } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
+            $insertJwb = $conn->query("INSERT INTO Jawaban_Ujian (kode, ujian, mahasiswa, soal, jawaban)
+                VALUES ('$kodeJwb', '$kodeUjian', '$nim', '$listKodeSoalPG[$i]', '$listJwbPG[$i]')");
 
-            $insertJwb = mysqli_query($conn, "INSERT INTO Jawaban_Ujian (kode, ujian, mahasiswa, soal, jawaban)
-                VALUES ('$kodeJwb', '$kodeUjian', '$nim', '$listKodeSoalPG[$i]', '$listJwbPG[$i]')
-            ");
             if (!$insertJwb) $countErr++;
             $i++;
         }
@@ -128,13 +121,12 @@
             // mencari kode yang belum terpakai
             do {
                 $kodeJwb = code_generator(5, 'JWB');
-                $checkPK = mysqli_query($conn, "SELECT * FROM Jawaban_Ujian WHERE kode='$kodeJwb'");
-            } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+                $checkPK = $conn->query("SELECT * FROM Jawaban_Ujian WHERE kode='$kodeJwb'");
+            } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
+            $insertJwb = $conn->query("INSERT INTO Jawaban_Ujian (kode, ujian, mahasiswa, soal, jawaban)
+                VALUES ('$kodeJwb', '$kodeUjian', '$nim', '$listKodeSoalEsai[$i]', '$listJwbEsai[$i]')");
 
-            $insertJwb = mysqli_query($conn, "INSERT INTO Jawaban_Ujian (kode, ujian, mahasiswa, soal, jawaban)
-                VALUES ('$kodeJwb', '$kodeUjian', '$nim', '$listKodeSoalEsai[$i]', '$listJwbEsai[$i]')
-            ");
             if (!$insertJwb) $countErr++;
             $i++;
         }
@@ -147,32 +139,30 @@
         }
 
         // merefesh halaman
-        header("location: ./exam.php?kode=$kodeUjian");
+        header("location: $urlOfThisPage");
         exit;
     }
 
 
     // mengecek apakah mhs sudah pernah mengerjakan ujian ini
     $kodeUjian = $ujian['kode_ujian'];
-    $hasDoneExamResult = mysqli_query($conn, "SELECT has_done_exam('$kodeUjian', '$nim')");
-    $hasDoneExam = mysqli_fetch_row($hasDoneExamResult)[0];
+    $hasDoneExamResult = $conn->query("SELECT has_done_exam('$kodeUjian', '$nim')");
+    $hasDoneExam = $hasDoneExamResult->fetch_row()[0];
 
 
     // mendapatkan nilai ujian jika sudah dinilai
-    $hasExamCheckedResult = mysqli_query($conn, "SELECT * FROM Nilai_Ujian WHERE ujian='$kodeUjian' AND mahasiswa='$nim' AND sudah_dinilai=1");
-    $hasExamChecked = mysqli_num_rows($hasExamCheckedResult) == 1;
-    $examScore = ($hasExamChecked) ? mysqli_fetch_assoc($hasExamCheckedResult) : null;
+    $hasExamCheckedResult = $conn->query("SELECT * FROM Nilai_Ujian WHERE ujian='$kodeUjian' AND mahasiswa='$nim' AND sudah_dinilai = 1");
+    $hasExamChecked = $hasExamCheckedResult->num_rows === 1;
+    $examScore = ($hasExamChecked) ? $hasExamCheckedResult->fetch_assoc() : null;
 
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
     if (isset($_SESSION['alert']) && $_SESSION['alert']) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -231,9 +221,8 @@
                                         <?php
                                             $optList = array();
                                             foreach ($soalPG as $field => $value) {
-                                                if (strpos($field, 'opsi') !== FALSE && !empty($value)) {
+                                                if (strpos($field, 'opsi') !== FALSE && !empty($value))
                                                     array_push($optList, $value);
-                                                }
                                             }
                                             shuffle($optList);
                                         ?>
@@ -397,7 +386,5 @@
         <?php endif; ?>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8" crossorigin="anonymous"></script>
-    <script>
-    </script>
 </html>
 </body>

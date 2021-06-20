@@ -7,11 +7,12 @@
     // mengimport user-defined functions
     include './includes/function.php';
 
-    // jika sesi login tidak aktif atau user tidak valid
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
+    // mengarahkan ke halaman login jika sesi login tidak aktif atau user tidak valid
     if (!isset($_SESSION['login']) || !$_SESSION['login'] || !isset($_SESSION['user']) || empty($_SESSION['user'])) {
-        // mengarahkan ke halaman login
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: login.php?redirect=$redirectLink");
+        header("location: login.php?redirect=$urlOfThisPage");
         exit;
     }
 
@@ -22,11 +23,7 @@
     $listKelas = call_procedure($conn, "daftar_kelas_saya('$nim')");
 
     // memberikan respons jika terjadi error
-    if ($codeErr = mysqli_errno($conn) !== 0) {
-        $error = mysqli_error($conn);
-        echo "<script>alert('ERROR: $error (code: $codeErr)')</script>";
-    }
-
+    if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -40,6 +37,12 @@
     <title>Dashboard | SPOT RPL</title>
 </head>
 <body>
+    <?php if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) : ?>
+        <script>alert("<?=$_SESSION['alert']['message']?>")</script>
+    <?php
+        $_SESSION['alert'] = null;
+        endif;
+    ?>
     <nav>
         <a href="./index.php" class="logo" title="SPOT RPL">
             <img src="./assets/logomark.png" alt="logo" height="40" role="img">
@@ -82,7 +85,7 @@
 
     <section class="container">
         <h1>Daftar Mata Kuliah</h1>
-        <?php if (sizeof($listKelas) > 0) : ?>
+        <?php if ($listKelas && sizeof($listKelas) > 0) : ?>
             <table>
                 <thead>
                     <tr>

@@ -1,8 +1,9 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
+    // mengimport koneksi database ($conn) dan functions
     require './includes/db-connect.php';
+    require './includes/function.php';
 
     // mengalihkan ke dashboard jika sesi login aktif
     if(isset($_SESSION['login']) && $_SESSION['login']) {
@@ -10,40 +11,29 @@
         exit;
     }
 
+    $urlOfThisPage = get_url_of_this_page();
+
     // mengirim data form jika tombol submit diklik
     if (isset($_POST['submit'])) {
-
         $fullname = htmlspecialchars($_POST['fullname']);
         $nim = htmlspecialchars($_POST['nim']);
         $password = password_hash(htmlspecialchars($_POST['password']), PASSWORD_BCRYPT);    // mengenkripsi password
 
         // mengirimkan data ke database
-        $insertQuery = "INSERT INTO Mahasiswa (nim, nama_lengkap, kata_sandi) VALUES ('$nim', '$fullname', '$password')";
-        $queryRespons = mysqli_query($conn, $insertQuery);
+        $queryRespons = $conn->query("INSERT INTO Mahasiswa (nim, nama_lengkap, kata_sandi) VALUES ('$nim', '$fullname', '$password')");
 
-        // memberikan umpan balik
+        // memberikan respons berhasil
         if ($queryRespons) {
-
-            // memberikan umpan balik positif (berhasil)
-            echo "<script>alert('Pendaftaran berhasil.')</script>";
-
-        } else {
-
-            // memberikan umpan balik negatif (gagal)
-            $errCode = mysqli_errno($conn);
-            $duplicatePKErr = 1062;
-
-            if ($errCode === $duplicatePKErr) {
-
-                // umpan balik jika NIM sudah terdaftar
-                echo "<script>alert('NIM $nim sudah terdaftar. Silahkan login menggunakan NIM tersebut.')</script>";
-
-            } else {
-
-                // umpan balik untuk kegagalan lainnya
-                echo "<script>alert('Pendaftaran gagal. (Kode Error: $errCode)')</script>";
-            }
+            $_SESSION['alert'] = array('error' => true, 'message' => "Pendaftaran berhasil.");
+            header('location: ./login.php');
+            exit;
         }
+
+        $duplicatePKErr = 1062;
+        $_SESSION['alert'] = ($conn->errno === $duplicatePKErr) ? last_query_error($conn, "NIM $nim sudah terdaftar. Silahkan login menggunakan NIM tersebut.") : last_query_error($conn);
+
+        header("location: $urlOfThisPage");
+        exit;
     }
 ?>
 <!DOCTYPE html>
@@ -60,6 +50,12 @@
     <title>Pendaftaran | SPOT RPL</title>
 </head>
 <body>
+    <?php if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) : ?>
+        <script>alert("<?=$_SESSION['alert']['message']?>")</script>
+    <?php
+        $_SESSION['alert'] = null;
+        endif;
+    ?>
     <nav>
         <a href="./index.php" class="logo" title="SPOT RPL">
             <img src="./assets/logomark.png" alt="logo" height="40" role="img">
@@ -68,15 +64,7 @@
                 <span class="name2">Sistem Pembelajaran Online Terpadu</span>
             </div>
         </a>
-        <div class="right-group">
-            <div class="selector">
-                <label for="country">Select Country</label>
-                <select id="country">
-                    <option value="id" selected>Indonesia</option>
-                    <option value="gs"> Global Site</option>
-                </select>
-            </div>
-        </div>
+        <div class="right-group"></div>
     </nav>
     <div class="container">
         <h1 class="mt-5">Form Pendaftaran</h1>

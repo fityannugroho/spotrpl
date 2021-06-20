@@ -264,7 +264,12 @@
                                 <span class="nomor">Nomor <?=$i?></span>
                             </div>
                             <div class="question-body">
-                                <?php $jwbEsai = $listJwbEsai[$i-1]; ?>
+                                <?php
+                                    $jwbEsai = '';
+                                    foreach ($listJwbEsai as $tJwbEsai) {
+                                        if ($tJwbEsai['kode_soal'] === $soalEsai['kode_soal']) $jwbEsai = $tJwbEsai;
+                                    }
+                                ?>
                                 <p><?=$soalEsai['pertanyaan']?></p>
                                 <?php if (!empty($soalEsai['nama_file']) && strpos($soalEsai['mimetype'], 'image/') !== FALSE) : ?>
                                     <img src="../db/<?=$soalEsai['nama_file']?>" alt="gambar soal" width="100%">

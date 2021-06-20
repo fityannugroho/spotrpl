@@ -35,7 +35,7 @@
 
     /**
      * Fungsi untuk membuat kode yang terdiri dari beberapa digit angka acak, ditambah dengan awalan atau akhiran tertentu.
-     * @param int $numLen Jumlah digit angka acak yang diinginkan (default: 5)
+     * @param int $numLen Jumlah digit angka acak yang diinginkan (default: 5).
      * @param string $prefix Awalan tertentu pada kode.
      * @param string $suffix Akhiran tertentu pada kode.
      * @return string Kode yang dihasilkan.
@@ -101,7 +101,7 @@
 
 
     /**
-     * Fungsi untuk mendapatkan nama dari sebuah file dan ekstensinya
+     * Fungsi untuk mendapatkan nama dari sebuah file dan ekstensinya.
      * @param $_FILES $file File yang akan dicek namanya.
      * @return array Array yang berisi nama file (name) dan ekstensi file (ext).
      */
@@ -118,10 +118,27 @@
 
 
     /**
-     * Fungsi untuk mendapatkan url dari halaman saat ini
-     * @return string alamat url dari halaman saat ini
+     * Fungsi untuk mendapatkan url dari halaman saat ini.
+     * @return string alamat url dari halaman saat ini.
      */
     function get_url_of_this_page() {
         return ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    }
+
+
+    /**
+     * Fungsi untuk mengembalikan pesan jika terjadi error pada eksekusi query terakhir.
+     * @param mysqli $conn Link identifier hasil dari mysqli_connect() atau mysqli_init().
+     * @param string $invalidMessage Pesan error yang hendak ditampilkan. Secara default akan menampilkan pesan error bawaan dari MySQL.
+     * @return array|null Mengembalikan null jika tidak ada error, dan akan mengembalikan array yang berisi status dan pesan error jika terdapat error.
+     */
+    function last_query_error($conn, $invalidMessage = '') {
+        if ($conn->errno !== 0) {
+            return array(
+                'error' => true,
+                'message' => (empty($invalidMessage)) ? "MySQL Error! $conn->errno: $conn->error." : $invalidMessage
+            );
+        }
+        return null;
     }
 ?>

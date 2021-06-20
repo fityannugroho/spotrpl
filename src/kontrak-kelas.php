@@ -8,77 +8,54 @@
     include './includes/function.php';
 
 
+    // mendapatkan url dari laman saat ini
+    $urlOfThisPage = get_url_of_this_page();
+
     // jika sesi login tidak aktif atau user tidak valid
     if (!isset($_SESSION['login']) || !$_SESSION['login'] || !isset($_SESSION['user']) || empty($_SESSION['user'])) {
         // mengarahkan ke halaman login
-        $redirectLink = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        header("location: login.php?redirect=$redirectLink");
+        header("location: login.php?redirect=$urlOfThisPage");
         exit;
     }
+
 
     $nim = $_SESSION['user']['id'];
 
     // mengambil data kelas
     $listKls = call_procedure($conn, "available_class('$nim')");
+    if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
 
-    if (mysqli_errno($conn) !== 0) {
-        $error = mysqli_error($conn);
-
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Terjadi kesalahan saat mengambil data pilihan kelas <i>$error</i>"
-        );
-    }
 
     // handle form
     if (isset($_POST['kontrak_kls_baru'])) {
-
         $kodeKelas = htmlspecialchars($_POST['kode_kelas']);
         $kodeKontrak = '';
 
         // mencari kode yang belum terpakai
         do {
             $kodeKontrak = code_generator(5, 'KKS');
-            $checkPK = mysqli_query($conn, "SELECT * FROM Kontrak_Kelas WHERE kode=$kodeKontrak");
-        } while ($checkPK !== FALSE && mysqli_num_rows($checkPK) > 0);
+            $checkPK = $conn->query("SELECT * FROM Kontrak_Kelas WHERE kode=$kodeKontrak");
+        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
         // menambahkan data kontrak kuliah
-        $insertRespon = mysqli_query($conn, "INSERT INTO Kontrak_Kelas VALUES ('$kodeKontrak', '$nim', '$kodeKelas')");
+        $insertRespon = $conn->query("INSERT INTO Kontrak_Kelas VALUES ('$kodeKontrak', '$nim', '$kodeKelas')");
 
         if ($insertRespon) {
             header("location: ./dashboard.php");
             exit;
-
-        } else {
-            $errCode = mysqli_errno($conn);
-            $duplicatePKErrCode = 1062;
-
-            if ($errCode === $duplicatePKErrCode) {
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Kode Kontrak <b>$kodeKontrak</b> sudah terpakai! Harap gunakan kode lain."
-                );
-            } else {
-                $error = mysqli_error($conn);
-
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => "Kontrak Kelas gagal!<br><i>$error ($errCode)</i>"
-                );
-            }
         }
+
+        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
     }
 
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
     if (isset($_SESSION['alert']) && $_SESSION['alert']) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -117,7 +94,7 @@
                 <label class="form-label" for="kodeKelas">Pilih Kelas :</label>
                 <select class="form-select" name="kode_kelas" id="kodeKelas" required>
                     <option value="" selected disabled>-- Pilih Kelas --</option>
-                    <?php if ($listKls > 0) : ?>
+                    <?php if ($listKls && sizeof($listKls) > 0) : ?>
                         <?php foreach ($listKls as $kls) : ?>
                             <option value="<?=$kls['kode_kls']?>">Kelas <?=$kls['nama_kls']?> - <?=$kls['nama_mk']?></option>
                         <?php endforeach; ?>

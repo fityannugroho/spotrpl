@@ -3,7 +3,6 @@
 
     // mengecek apakah sesi login aktif
     if (isset($_SESSION['login']) && $_SESSION['login']) {
-
         // mengarahkan ke halaman dashboard
         header('location: ./dashboard.php');
         exit;

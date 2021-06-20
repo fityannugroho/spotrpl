@@ -3,13 +3,11 @@
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
     if (isset($_SESSION['alert']) && $_SESSION['alert']) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>

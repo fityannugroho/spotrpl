@@ -7,180 +7,108 @@
     // mengimport user-defined functions
     include './includes/function.php';
 
+    $redirect = (isset($_GET['redirect']) && !empty($_GET['redirect'])) ? $_GET['redirect'] : null;
+    $urlOfThisPage = get_url_of_this_page();
+
     // register
     if (isset($_POST['register'])) {
-
         $username = htmlspecialchars($_POST['username']);
         $name = htmlspecialchars($_POST['name']);
         $rootPassword = htmlspecialchars($_POST['root_password']);
         $password = htmlspecialchars($_POST['password']);
         $cpassword = htmlspecialchars($_POST['cpassword']);
 
-        $trueRoot = mysqli_query($conn, "SELECT password FROM Root WHERE id=1");
-        $trueRoot = mysqli_fetch_row($trueRoot)[0];
+        $trueRoot = ($conn->query("SELECT password FROM Root WHERE id = 1"))->fetch_row()[0];
 
-        if (!password_verify($rootPassword, $trueRoot)) {
+        if ($password !== $cpassword) {
+            $_SESSION['alert'] = array(
+                'error' => TRUE,
+                'message' => "Konfirmasi Kata Sandi <b>tidak cocok</b> dengan Kata Sandi yang Anda buat!"
+            );
+
+        } elseif (!password_verify($rootPassword, $trueRoot)) {
             $_SESSION['alert'] = array(
                 'error' => TRUE,
                 'message' => "Kata Sandi Root Salah!"
             );
 
-        } elseif ($password === $cpassword) {
-
+        } else {
             $password = password_hash($password, PASSWORD_BCRYPT);    // mengenkripsi password
 
             // mengirimkan data ke tabel Dosen
-            $insertQuery = "INSERT INTO Dosen (kode, nama, kata_sandi) VALUES ('$username', '$name', '$password')";
-            $queryRespons = mysqli_query($conn, $insertQuery);
+            $queryRespons = $conn->query("INSERT INTO Dosen (kode, nama, kata_sandi) VALUES ('$username', '$name', '$password')");
 
-            // memberikan umpan balik
             if ($queryRespons) {
-
-                // memberikan umpan balik positif (berhasil)
-                $_SESSION['alert'] = array(
-                    'error' => FALSE,
-                    'message' => "Pendaftaran berhasil."
-                );
+                $_SESSION['alert'] = array('error' => FALSE, 'message' => "Pendaftaran berhasil.");
+                header('location: ./admin.php');
+                exit;
 
             } else {
-
-                // memberikan umpan balik negatif (gagal)
-                $errCode = mysqli_errno($conn);
                 $duplicatePKErr = 1062;
-
-                if ($errCode === $duplicatePKErr) {
-
-                    // umpan balik jika Username sudah terdaftar
-                    $_SESSION['alert'] = array(
-                        'error' => TRUE,
-                        'message' => "Username <b>$username</b> sudah terdaftar. Silahkan login menggunakan Username tersebut."
-                    );
-
-                } else {
-
-                    // umpan balik untuk kegagalan lainnya
-                    $_SESSION['alert'] = array(
-                        'error' => TRUE,
-                        'message' => "Pendaftaran gagal. (Kode Error: $errCode)"
-                    );
-                }
+                $_SESSION['alert'] = ($conn->errno === $duplicatePKErr) ? $_SESSION['alert'] = last_query_error($conn, "Username <b>$username</b> sudah terdaftar. Silahkan login menggunakan Username tersebut.") : last_query_error($conn);
             }
-
-        } else {
-
-            // jika konfirmasi kata sandi tidak cocok
-            $_SESSION['alert'] = array(
-                'error' => TRUE,
-                'message' => "Konfirmasi Kata Sandi <b>tidak cocok</b> dengan Kata Sandi yang Anda buat!"
-            );
         }
 
-        header('location: ./admin.php');
+        header("location: $urlOfThisPage");
         exit;
     }
 
 
     // login
     if (isset($_POST['login'])) {
-
         $username = htmlspecialchars($_POST['username']);
         $password = htmlspecialchars($_POST['password']);
 
         // mencari data dari tabel Dosen menggunakan Primary Key (PK)
-        $searchQuery = "SELECT * FROM Dosen WHERE kode='$username'";
-        $queryRespons = mysqli_query($conn, $searchQuery);
+        $queryRespons = $conn->query("SELECT * FROM Dosen WHERE kode='$username'");
 
         // jika ditemukan data dengan PK yang sesuai
-        if (mysqli_num_rows($queryRespons) === 1) {
-
-            // menyimpan data user ke bentuk array asosiatif
-            $userData = mysqli_fetch_assoc($queryRespons);
+        if ($queryRespons && $queryRespons->num_rows === 1) {
+            $userData = $queryRespons->fetch_assoc();
 
             // verifikasi kata sandi
             if (password_verify($password, $userData['kata_sandi'])) {
-
-                // jika kata sandi terverifikasi
-                // membuat sesi login
+                // jika kata sandi terverifikasi, membuat sesi login
                 $_SESSION['admin'] = TRUE;
                 $_SESSION['credentials'] = array(
                     'id' => $userData['kode'],
                     'name' => $userData['nama']
                 );
 
-
-                // jika terdapat redirect
-                if (isset($_GET['redirect']) && !empty($_GET['redirect'])) {
-
-                    // mengarahkan ke halaman tertentu
-                    $redirect = $_GET['redirect'];
-                    header("location: $redirect");
-                    exit;
-
-                } else {
-                    // merefresh halaman
-                    header('location: admin.php');
-                    exit;
-                }
-
-            } else {
-
-                // jika kata sandi tidak sesuai
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => 'Login gagal! Harap cek kembali Kata Sandi yang Anda masukkan.'
-                );
-            }
-        } else {
-
-            // jika data tidak ditemukan
-            $errCode = mysqli_errno($conn);
-            $PKNotFoundCode = 0;
-
-            if ($errCode === $PKNotFoundCode) {
-
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => 'Login gagal! Username yang Anda masukkan tidak ditemukan.'
-                );
-
-            } else {
-
-                $_SESSION['alert'] = array(
-                    'error' => TRUE,
-                    'message' => 'Login gagal! (Kode Error: $errCode)'
-                );
+                // mengarahkan ke halaman tertentu atau ke halaman beranda admin
+                if (!empty($redirect)) header("location: $redirect");
+                else header('location: admin.php');
+                exit;
             }
         }
+
+        $_SESSION['alert'] = array(
+            'error' => TRUE,
+            'message' => "Login gagal! Username atau kata sandi tidak sesuai."
+        );
+
+        // jika terjadi error selain karena username / password yang salah (MySQL Error)
+        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
     }
 
 
     // jika sesi admin aktif
     if (isset($_SESSION['admin']) && $_SESSION['admin']) {
-
         // mengambil daftar mata kuliah
         $listMatkul = call_procedure($conn, "daftar_matkul");
 
         // memberikan respons jika terjadi error
-        if ($codeErr = mysqli_errno($conn) !== 0) {
-            $error = mysqli_error($conn);
-
-            $_SESSION['alert'] = array(
-                'error' => TRUE,
-                'message' => "ERROR: $error (code: $codeErr)"
-            );
-        }
+        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
     }
 
 
     // mengecek jika ada suatu peringatan (alert)
     $alert = '';
-
-    if (isset($_SESSION['alert']) && $_SESSION['alert']) {
+    if (isset($_SESSION['alert']) && !empty($_SESSION['alert'])) {
         $alert = array(
             'error' => $_SESSION['alert']['error'],
             'message' => $_SESSION['alert']['message']
         );
-
         $_SESSION['alert'] = '';
     }
 ?>
@@ -304,7 +232,6 @@
                         <span class="material-icons">add</span>
                     </a>
                 </div>
-
                 <?php if ($listMatkul && sizeof($listMatkul) > 0) : ?>
                     <div class="responsive-table">
                         <table class="mt-3 table table-bordered table-striped table-hover">
