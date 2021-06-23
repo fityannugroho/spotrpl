@@ -20,19 +20,22 @@
         $password = htmlspecialchars($_POST['password']);
 
         // mencari data dari tabel Mahasiswa menggunakan Primary Key (PK)
-        $queryRespons = $conn->query("SELECT * FROM Mahasiswa WHERE nim='$username'");
+        $queryRespons = $conn->query("SELECT * FROM Akun WHERE username='$username'");
 
         // jika ditemukan data dengan PK yang sesuai
         if ($queryRespons && $queryRespons->num_rows === 1) {
-            $userData = $queryRespons->fetch_assoc();
+            $credential = $queryRespons->fetch_assoc();
 
             // verifikasi kata sandi
-            if (password_verify($password, $userData['kata_sandi'])) {
+            if (password_verify($password, $credential['password'])) {
+                $mhsResult = call_procedure($conn, "get_biodata_mhs('$username')");
+                $mhs = (sizeof($mhsResult)) ? $mhsResult[0] : null;
+
                 // jika kata sandi terverifikasi, membuat sesi login
                 $_SESSION['login'] = TRUE;
                 $_SESSION['user'] = array(
-                    'id' => $userData['nim'],
-                    'name' => $userData['nama_lengkap']
+                    'id' => $credential['username'],
+                    'name' => $mhs['nama']
                 );
 
                 // mengarahkan ke halaman tertentu atau ke halaman dashboard

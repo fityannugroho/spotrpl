@@ -34,17 +34,21 @@ const displayProfile = () => {
 
 }
 
-burgerIcon.addEventListener('click', () => {
-    navSlide();
-    if (profileBox.classList.contains('active')) {
-        displayProfile();
-    }
-});
-
-profileToggle.addEventListener('click', () => {
-    displayProfile();
-
-    if (mainMenus.classList.contains('active')) {
+if (burgerIcon) {
+    burgerIcon.addEventListener('click', () => {
         navSlide();
-    }
-});
+        if (profileBox.classList.contains('active')) {
+            displayProfile();
+        }
+    });
+}
+
+if (profileToggle) {
+    profileToggle.addEventListener('click', () => {
+        displayProfile();
+
+        if (mainMenus.classList.contains('active')) {
+            navSlide();
+        }
+    });
+}

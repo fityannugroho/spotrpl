@@ -4,13 +4,25 @@
     gap: 0.6rem;
 }
 
+.field.check {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.field.check-inline {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    padding: 0.6rem 0;
+}
+
 .field label {
     font-weight: bold;
     text-transform: capitalize;
 }
 
 .field input {
-    padding: 1rem 1.2rem;
+    padding: 1rem;
     border: 1px solid var(--pure-white);
     border-radius: 4px;
     font-size: 1.4rem;
@@ -20,6 +32,19 @@
 .field input:focus {
     outline: none;
     box-shadow: 0 0 1px 2px var(--primary-color);
+}
+
+.field select {
+    padding: 1rem 1.2rem;
+}
+
+.input-check {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.input-check label {
+    font-weight: normal;
 }
 
 .password-field {

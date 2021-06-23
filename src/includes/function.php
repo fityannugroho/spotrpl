@@ -136,9 +136,63 @@
         if ($conn->errno !== 0) {
             return array(
                 'error' => true,
-                'message' => (empty($invalidMessage)) ? "MySQL Error! $conn->errno: $conn->error." : $invalidMessage
+                'message' => (empty($invalidMessage)) ? "MySQL Error: [$conn->errno] $conn->error." : $invalidMessage
             );
         }
         return null;
+    }
+
+
+    /**
+     * Fungsi untuk mengecek sekaligus mendapatkan nilai Primary Key untuk suatu tabel.
+     * @param mysqli $conn Link identifier hasil dari mysqli_connect() atau mysqli_init().
+     * @param string $tableName Nama tabel pada database.
+     * @param string $pkFieldName Nama field yang menjadi Primary Key pada tabel.
+     * @param function $code_generator Fungsi yang akan mengembalikan string kode. Misal: fungsi code_generator()
+     * @return string Kode PK yang tidak ditemukan pada tabel.
+     */
+    function get_valid_PK($conn,  $tableName, $pkFieldName, $code_generator) {
+        $id = '';
+        do {
+            $id = $code_generator;
+            $checkPK = $conn->query("SELECT $pkFieldName FROM $tableName WHERE $pkFieldName = '$id'");
+            if (!$checkPK) throw new mysqli_sql_exception($conn->error);
+        } while ($checkPK && $checkPK->num_rows > 0);
+        return $id;
+    }
+
+
+    /**
+     * Fungsi untuk mencetak & menampilkan pesan pada browser-console.
+     * @param string $message Pesan yang akan dicetak.
+     * @param boolean $error Apakah pesan merupakan pesan error? Default false.
+     */
+    function print_console($message, $error = false) {
+        $message = base64_encode($message);
+        $script = ($error) ? "console.error(atob('$message'))" : "console.log(atob('$message'))";
+        echo "<script>$script</script>";
+    }
+
+
+    /**
+     * Fungsi untuk mengeksekusi query dengan menggunakan statement SQL.
+     * @param mysqli $conn Link identifier hasil dari mysqli_connect() atau mysqli_init().
+     * @param string $query Query SQL yang akan dieksekusi dengan menggunakan tanda ? untuk mengganti parameter di posisi yang sesuai.
+     * @param string $paramTypes Sebuah string yang mengandung satu / lebih karakter untuk menspesifikasikan tipe dari parameter
+     * @param mixed $values Satu / lebih variabel yang menjadi parameter pada query.
+     * @return boolean Mengembalikan 'true' jika eksekusi query berhasil, atau 'false' jika gagal.
+     * @throws InvalidArgumentException Jika terdapat argumen yang tidak valid.
+     * @throws mysqli_sql_exception Jika terdapat error pada SQL.
+     */
+    function query_statement($conn, $query, $paramTypes, ...$values) {
+        if (!$conn) throw new InvalidArgumentException('Invalid argument value for \'$conn\'', E_USER_ERROR);
+
+        $stmt = $conn->prepare($query);
+        if (!$stmt) throw new mysqli_sql_exception($conn->error);
+
+        if (strlen($paramTypes) !== sizeof($values)) throw new InvalidArgumentException('Number of \'$paramTypes\' doesn\'t match with number of \'$values\'');
+        $stmt->bind_param($paramTypes, ...$values);
+
+        return $stmt->execute();
     }
 ?>

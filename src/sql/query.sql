@@ -2,23 +2,62 @@ CREATE DATABASE IF NOT EXISTS SpotRPL;
 USE SpotRPL;
 
 
-CREATE TABLE IF NOT EXISTS Root (
-    id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+-- *NEW
+CREATE TABLE IF NOT EXISTS Akun (
+    id VARCHAR(12) PRIMARY KEY NOT NULL,
+    username VARCHAR(255) NOT NULL,
     password TEXT NOT NULL
 );
 
 
-CREATE TABLE IF NOT EXISTS Mahasiswa (
-    nim VARCHAR(7) PRIMARY KEY NOT NULL,
-    nama_lengkap TEXT NOT NULL,
-    kata_sandi TEXT NOT NULL
+-- *NEW
+CREATE TABLE IF NOT EXISTS Alamat (
+    kode VARCHAR(12) PRIMARY KEY NOT NULL,
+    jalan TEXT NOT NULL,
+    rt INT NOT NULL,
+    rw INT NOT NULL,
+    desa_kel TEXT NOT NULL,
+    kec TEXT NOT NULL,
+    kab_kota TEXT NOT NULL,
+    provinsi TEXT NOT NULL,
+    kode_pos INT NOT NULL,
+    latitude DOUBLE DEFAULT NULL,
+    longitude DOUBLE DEFAULT NULL
 );
 
 
+-- *NEW
+CREATE TABLE IF NOT EXISTS Biodata (
+    kode VARCHAR(12) PRIMARY KEY NOT NULL,
+    nama TEXT NOT NULL,
+    lk BOOLEAN NOT NULL,
+    tmpt_lahir TEXT NOT NULL,
+    tgl_lahir DATE NOT NULL,
+    agama TEXT NOT NULL,
+    alamat VARCHAR(12) NOT NULL,
+    telp TEXT DEFAULT NULL,
+    email TEXT DEFAULT NULL,
+    FOREIGN KEY(alamat) REFERENCES Alamat(kode)
+);
+
+
+-- *NEW
+CREATE TABLE IF NOT EXISTS Mahasiswa (
+    nim VARCHAR(7) PRIMARY KEY NOT NULL,
+    akun VARCHAR(12) NOT NULL,
+    biodata VARCHAR(12) NOT NULL,
+    FOREIGN KEY(akun) REFERENCES Akun(id),
+    FOREIGN KEY(biodata) REFERENCES Biodata(kode)
+);
+
+
+-- *NEW
 CREATE TABLE IF NOT EXISTS Dosen (
     kode VARCHAR(4) PRIMARY KEY NOT NULL,
-    nama TEXT NOT NULL,
-    kata_sandi TEXT NOT NULL
+    akun VARCHAR(12) NOT NULL,
+    biodata VARCHAR(12) NOT NULL,
+    FOREIGN KEY(akun) REFERENCES Akun(id),
+    FOREIGN KEY(biodata) REFERENCES Biodata(kode)
 );
 
 
@@ -194,6 +233,18 @@ CREATE TABLE IF NOT EXISTS Nilai_Ujian (
     FOREIGN KEY(ujian) REFERENCES Ujian(kode),
     FOREIGN KEY(mahasiswa) REFERENCES Mahasiswa(nim)
 );
+
+
+--
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS get_biodata_mhs (IN nim VARCHAR(7))
+BEGIN
+    SELECT *
+    FROM Mahasiswa AS mhs
+    INNER JOIN Biodata AS bio ON bio.kode = mhs.biodata
+    WHERE mhs.nim = nim;
+END //
+DELIMITER ;
 
 
 -- Membuat PROCEDURE dengan parameter kode matkul untuk mengambil data mata kuliah pada tabel Mata_Kuliah ditambah data nama_dosen_pengampu1 dan nama_dosen_pengampu2 yang diambil dari tabel Dosen.

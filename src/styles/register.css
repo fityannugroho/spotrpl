@@ -6,6 +6,13 @@ form {
     margin-top: 2rem;
 }
 
+form section {
+    margin-top: 2.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+}
+
 .container {
     border-radius: 4px;
     background-color: #f2f2f2;
@@ -14,8 +21,12 @@ form {
 
 .row {
     display: flex;
-    margin-bottom: 1.4rem;
     gap: 1.2rem;
+    align-items: center;
+}
+
+.row.d-none {
+    display: none;
 }
 
 .row.justify-end {
@@ -49,6 +60,6 @@ button[type='submit'] {
 
     .row {
         flex-direction: column;
-        gap: 0.6rem;
+        gap: 0.8rem;
     }
 }
