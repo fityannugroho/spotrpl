@@ -1,10 +1,17 @@
 <?php
     session_start();
 
+    require './includes/db-connect.php';
+    require './includes/constants.php';
+    require './includes/function.php';
+
     // mengecek apakah sesi login aktif
     if (isset($_SESSION['login']) && $_SESSION['login']) {
-        // mengarahkan ke halaman dashboard
-        header('location: ./dashboard.php');
+        $accType = $_SESSION['user']['type'];
+
+        // mengarahkan ke halaman yang sesuai
+        if ($accType === ACC_MHS) header('location: ./dashboard.php');
+        elseif ($accType === ACC_DOSEN) header('location: ./admin.php');
         exit;
     }
 ?>

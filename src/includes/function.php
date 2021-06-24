@@ -6,8 +6,9 @@
      * @return array Sebuah array tiga dimensi (3D) yang berisi hasil pemanggilan PROCEDURE.
      * D1: set/tabel (index), D2: baris/record (index), D3: kolom/field (associative).
      * Jika hanya ada 1 set, maka pengembalian hanya D2 dan D3 saja.
+     * Jika query gagal, maka akan mengembalikan array kosong.
      */
-    function call_procedure($conn, $procedure) {
+    function call_procedure($conn, $procedure): array {
         $result = array();
         $query = "CALL $procedure";
 
@@ -35,12 +36,12 @@
 
     /**
      * Fungsi untuk membuat kode yang terdiri dari beberapa digit angka acak, ditambah dengan awalan atau akhiran tertentu.
-     * @param int $numLen Jumlah digit angka acak yang diinginkan (default: 5).
-     * @param string $prefix Awalan tertentu pada kode.
-     * @param string $suffix Akhiran tertentu pada kode.
+     * @param int $numLen [opsional] Jumlah digit angka acak yang diinginkan (default: 5).
+     * @param string $prefix [opsional] Awalan tertentu pada kode.
+     * @param string $suffix [opsional] Akhiran tertentu pada kode.
      * @return string Kode yang dihasilkan.
      */
-    function code_generator($numLen = 5, $prefix = '', $suffix = '') {
+    function code_generator($numLen = 5, $prefix = '', $suffix = ''): string {
         $randNum = '';
         while ($numLen > 0) {
             $randNum .= rand(0, 9);
@@ -56,7 +57,7 @@
      * @param string $destination Lokasi tempat penyimpanan file.
      * @return array mengembalikan status & pesan dari proses upload. Status error akan bernilai 'true' jika upload file gagal, berlaku sebaliknya.
      */
-    function upload_file($file, $destination) {
+    function upload_file($file, $destination): array {
         /**
          * Persyaratan File :
          * 1. Ekstensi yang diperbolehkan terbatas, tercantum dalam variabel $allowedExt.
@@ -105,7 +106,7 @@
      * @param $_FILES $file File yang akan dicek namanya.
      * @return array Array yang berisi nama file (name) dan ekstensi file (ext).
      */
-    function break_filename($file) {
+    function break_filename($file): array {
         $breakFileName = explode('.', $file['name']);
         $fileExt = strtolower(array_pop($breakFileName));
         $filename = implode('.', $breakFileName);
@@ -121,7 +122,7 @@
      * Fungsi untuk mendapatkan url dari halaman saat ini.
      * @return string alamat url dari halaman saat ini.
      */
-    function get_url_of_this_page() {
+    function get_url_of_this_page(): string {
         return ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
     }
 
@@ -129,14 +130,16 @@
     /**
      * Fungsi untuk mengembalikan pesan jika terjadi error pada eksekusi query terakhir.
      * @param mysqli $conn Link identifier hasil dari mysqli_connect() atau mysqli_init().
-     * @param string $invalidMessage Pesan error yang hendak ditampilkan. Secara default akan menampilkan pesan error bawaan dari MySQL.
+     * @param string $invalidMessage [opsional] Pesan error yang hendak ditampilkan. Secara default akan menampilkan pesan error bawaan dari MySQL.
      * @return array|null Mengembalikan null jika tidak ada error, dan akan mengembalikan array yang berisi status dan pesan error jika terdapat error.
      */
     function last_query_error($conn, $invalidMessage = '') {
         if ($conn->errno !== 0) {
+            $errMsg = (empty($invalidMessage)) ? "[$conn->errno] $conn->error" : $invalidMessage;
+            $SQLException = new mysqli_sql_exception($errMsg);
             return array(
                 'error' => true,
-                'message' => (empty($invalidMessage)) ? "MySQL Error: [$conn->errno] $conn->error." : $invalidMessage
+                'message' => $SQLException->__toString()
             );
         }
         return null;
@@ -180,7 +183,7 @@
      * @param string $query Query SQL yang akan dieksekusi dengan menggunakan tanda ? untuk mengganti parameter di posisi yang sesuai.
      * @param string $paramTypes Sebuah string yang mengandung satu / lebih karakter untuk menspesifikasikan tipe dari parameter
      * @param mixed $values Satu / lebih variabel yang menjadi parameter pada query.
-     * @return boolean Mengembalikan 'true' jika eksekusi query berhasil, atau 'false' jika gagal.
+     * @return boolean|mysqli_result Mengembalikan 'true' jika eksekusi query berhasil, atau 'false' jika gagal, atau akan mengembalikan $resultSet jika ada.
      * @throws InvalidArgumentException Jika terdapat argumen yang tidak valid.
      * @throws mysqli_sql_exception Jika terdapat error pada SQL.
      */
@@ -192,7 +195,32 @@
 
         if (strlen($paramTypes) !== sizeof($values)) throw new InvalidArgumentException('Number of \'$paramTypes\' doesn\'t match with number of \'$values\'');
         $stmt->bind_param($paramTypes, ...$values);
+        $success = $stmt->execute();
+        $resultSet = $stmt->get_result();
 
-        return $stmt->execute();
+        if ($resultSet === false) {
+            return $success;
+        } else {
+            return $resultSet;
+        }
+    }
+
+
+    /**
+     *
+     * @param int $accType
+     * @param int $accTypeRequired
+     * @param string $redirectUrl
+     * @return boolean
+     */
+    function page_access_validation($accType, $accTypeRequired, $redirectUrl = '') {
+        if ($accType !== $accTypeRequired) {
+            if (!empty($redirectUrl)) {
+                header("location: $redirectUrl");
+                exit;
+            }
+            return false;
+        }
+        return true;
     }
 ?>

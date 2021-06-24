@@ -35,33 +35,30 @@
         $longitude = (!empty($_POST['longitude'])) ? htmlspecialchars($_POST['longitude']) : null;
         $password = password_hash(htmlspecialchars($_POST['password']), PASSWORD_BCRYPT);   // mengenkripsi password
 
+        $nextSteps = true;
+
         // cek validasi nim
         $result = $conn->query("SELECT id FROM Akun WHERE username = '$nim'");
 
         // jika terdapat MySQL error
         if ($result === false) {
-            $_SESSION['alert'] = last_query_error($conn);
-            header('location: $urlOfThisPage');
-            exit;
-        }
-        // jika nim sudah terpakai
-        if ($result->num_rows > 0) {
+            $nextSteps = false;
+            print_console(last_query_error($conn)['message'], true);
+
+        } elseif ($result->num_rows !== 0) {
+            // jika nim sudah terpakai
             $_SESSION['alert'] = array('error' => true, 'message' => "NIM '$nim' sudah terpakai! Silahkan login menggunakan NIM tersebut.");
             header('location: ./login.php');
             exit;
         }
-
-        $nextSteps = true;
 
         // menambahkan data akun
         if ($nextSteps) {
             try {
                 $idAkun = get_valid_PK($conn, 'Akun', 'id', code_generator(12));
                 $nextSteps = query_statement(
-                    $conn,
-                    "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
-                    'sss',
-                    $idAkun, $nim, $password
+                    $conn, "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
+                    'sss', $idAkun, $nim, $password
                 );
             } catch (Exception $ex) {
                 $nextSteps = false;
@@ -74,10 +71,8 @@
             try {
                 $kodeAlamat = get_valid_PK($conn, 'Alamat', 'kode', code_generator(9, 'ADR'));
                 $nextSteps = query_statement(
-                    $conn,
-                    "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    'ssiissssidd',
-                    $kodeAlamat, $jalan, $rt, $rw, $desaKel, $kec, $kabKota, $provinsi, $kodePos, $latitude, $longitude
+                    $conn, "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    'ssiissssidd', $kodeAlamat, $jalan, $rt, $rw, $desaKel, $kec, $kabKota, $provinsi, $kodePos, $latitude, $longitude
                 );
             } catch (Exception $ex) {
                 $nextSteps = false;
@@ -90,10 +85,8 @@
             try {
                 $kodeBiodata = get_valid_PK($conn, 'Biodata', 'kode',  code_generator(9, 'BIO'));
                 $nextSteps = query_statement(
-                    $conn,
-                    "INSERT INTO Biodata (kode, nama, lk, tmpt_lahir, tgl_lahir, agama, alamat, telp, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    'ssissssss',
-                    $kodeBiodata, $fullname, $gender, $tmptLahir, $tglLahir, $agama, $kodeAlamat, $telp, $email
+                    $conn, "INSERT INTO Biodata (kode, nama, lk, tmpt_lahir, tgl_lahir, agama, alamat, telp, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    'ssissssss', $kodeBiodata, $fullname, $gender, $tmptLahir, $tglLahir, $agama, $kodeAlamat, $telp, $email
                 );
             } catch (Exception $ex) {
                 $nextSteps = false;
@@ -105,10 +98,8 @@
         if ($nextSteps) {
             try {
                 $nextSteps = query_statement(
-                    $conn,
-                    "INSERT INTO Mahasiswa (nim, akun, biodata) VALUES (?, ?, ?)",
-                    'sss',
-                    $nim, $idAkun, $kodeBiodata
+                    $conn, "INSERT INTO Mahasiswa (nim, akun, biodata) VALUES (?, ?, ?)",
+                    'sss', $nim, $idAkun, $kodeBiodata
                 );
             } catch (Exception $ex) {
                 $nextSteps = false;
@@ -118,11 +109,11 @@
 
         // memberikan respons berhasil
         if ($nextSteps) {
-            $_SESSION['alert'] = array('error' => true, 'message' => "Pendaftaran berhasil.");
+            $_SESSION['alert'] = array('error' => false, 'message' => "Pendaftaran berhasil.");
             header('location: ./login.php');
             exit;
         } else {
-            $_SESSION['alert'] = array('error' => false, 'message' => "Pendaftaran gagal.");
+            $_SESSION['alert'] = array('error' => true, 'message' => "Pendaftaran gagal.");
         }
     }
 ?>
@@ -160,7 +151,7 @@
         <h1 class="mt-5">Form Pendaftaran</h1>
         <p>Silahkan lengkapi kolom-kolom di bawah ini.</p>
         <hr/>
-        <form action="" method="POST">
+        <form action="" method="POST" id="registerMhs">
             <section>
                 <h2>Biodata</h2>
                 <div class="row">
@@ -389,6 +380,7 @@
     <script src="./script/navbar.js"></script>
     <script src="./script/form-validation.js"></script>
     <script src="./script/list-region.js"></script>
+    <script src="./script/print-list-region.js"></script>
     <script src="./script/register.js"></script>
 </body>
 </html>

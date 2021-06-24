@@ -1,10 +1,8 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
     require './includes/db-connect.php';
-
-    // mengimport user-defined functions
+    require './includes/constants.php';
     include './includes/function.php';
 
     // mendapatkan url dari laman saat ini
@@ -16,6 +14,12 @@
         exit;
     }
 
+    // cek tipe akun
+    if ($_SESSION['user']['type'] !== ACC_MHS) {
+        header('location: ./index.php');
+        exit;
+    }
+
     // mendapatkan NIM dari user yang sedang login
     $nim = $_SESSION['user']['id'];
 
@@ -23,7 +27,10 @@
     $listKelas = call_procedure($conn, "daftar_kelas_saya('$nim')");
 
     // memberikan respons jika terjadi error
-    if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
+    if (last_query_error($conn)) {
+        $queryError = last_query_error($conn);
+        print_console($queryError['message'], $queryError['error']);
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">

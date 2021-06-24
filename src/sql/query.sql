@@ -235,14 +235,72 @@ CREATE TABLE IF NOT EXISTS Nilai_Ujian (
 );
 
 
+-- Mengembalikan 1: jika Mahasiswa, 2: jika Dosen, dan 0: jika tidak ditemukan
+DELIMITER //
+CREATE FUNCTION IF NOT EXISTS account_type (username TEXT)
+RETURNS INT
+BEGIN
+    DECLARE num_rows INT;
+
+    -- Cek ke tabel Mahasiswa
+    SELECT COUNT(nim) INTO num_rows FROM Mahasiswa WHERE nim = username;
+    IF num_rows = 1 THEN
+        RETURN 1;
+    END IF;
+
+    -- Cek ke tabel Dosen
+    SELECT COUNT(kode) INTO num_rows FROM Dosen WHERE kode = username;
+    IF num_rows = 1 THEN
+        RETURN 2;
+    END IF;
+
+    -- Jika username tidak ditemukan di kedua tabel
+    RETURN 0;
+END //
+DELIMITER ;
+
+
 --
 DELIMITER //
 CREATE PROCEDURE IF NOT EXISTS get_biodata_mhs (IN nim VARCHAR(7))
 BEGIN
-    SELECT *
+    SELECT
+        mhs.nim AS nim,
+        mhs.akun AS kode_akun,
+        mhs.biodata AS kode_biodata,
+        bio.alamat AS kode_alamat,
+        bio.nama AS nama,
+        bio.lk AS gender,
+        bio.tmpt_lahir AS tmpt_lahir,
+        bio.tgl_lahir AS tgl_lahir,
+        bio.agama AS agama,
+        bio.telp AS telp,
+        bio.email AS email
     FROM Mahasiswa AS mhs
     INNER JOIN Biodata AS bio ON bio.kode = mhs.biodata
     WHERE mhs.nim = nim;
+END //
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS get_biodata_dosen (IN kode VARCHAR(7))
+BEGIN
+    SELECT
+        dsn.kode AS kode_dosen,
+        dsn.akun AS kode_akun,
+        dsn.biodata AS kode_biodata,
+        bio.alamat AS kode_alamat,
+        bio.nama AS nama,
+        bio.lk AS gender,
+        bio.tmpt_lahir AS tmpt_lahir,
+        bio.tgl_lahir AS tgl_lahir,
+        bio.agama AS agama,
+        bio.telp AS telp,
+        bio.email AS email
+    FROM Dosen AS dsn
+    INNER JOIN Biodata AS bio ON bio.kode = dsn.biodata
+    WHERE dsn.kode = kode;
 END //
 DELIMITER ;
 
@@ -286,14 +344,18 @@ BEGIN
         mk.thn_mulai,
         mk.thn_selesai,
         mk.dosen_pengampu1 AS kode_dosen1,
-        d1.nama AS nama_dosen1,
+        b1.nama AS nama_dosen1,
         mk.dosen_pengampu2 AS kode_dosen2,
-        d2.nama AS nama_dosen2
+        b2.nama AS nama_dosen2
     FROM Mata_Kuliah AS mk
     INNER JOIN Dosen AS d1
         ON d1.kode = mk.dosen_pengampu1
+    INNER JOIN Biodata AS b1
+        ON b1.kode = d1.biodata
     LEFT JOIN Dosen AS d2
         ON d2.kode = mk.dosen_pengampu2
+    INNER JOIN Biodata AS b2
+        ON b2.kode = d2.biodata
     ORDER BY mk.kode ASC;
 END; //
 DELIMITER ;
@@ -314,9 +376,9 @@ BEGIN
         mk.thn_mulai,
         mk.thn_selesai,
         d1.kode AS kode_dosen1,
-        d1.nama AS nama_dosen1,
+        b1.nama AS nama_dosen1,
         d2.kode AS kode_dosen2,
-        d2.nama AS nama_dosen2
+        b2.nama AS nama_dosen2
     FROM Kontrak_Kelas AS kk
     INNER JOIN Kelas AS ks
         ON ks.kode = kk.kelas
@@ -324,8 +386,12 @@ BEGIN
         ON mk.kode = ks.mata_kuliah
     INNER JOIN Dosen AS d1
         ON d1.kode = mk.dosen_pengampu1
-    INNER JOIN Dosen AS d2
+    INNER JOIN Biodata AS b1
+        ON b1.kode = d1.biodata
+    LEFT JOIN Dosen AS d2
         ON d2.kode = mk.dosen_pengampu2
+    INNER JOIN Biodata AS b2
+        ON b2.kode = d2.biodata
     WHERE kk.mahasiswa = nim
     ORDER BY mk.kode ASC;
 END; //

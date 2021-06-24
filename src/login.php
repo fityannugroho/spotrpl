@@ -4,13 +4,18 @@
     // mengimport koneksi database ($conn) dan functions
     require './includes/db-connect.php';
     require './includes/function.php';
+    require './includes/constants.php';
 
     $redirect = (isset($_GET['redirect']) && !empty($_GET['redirect'])) ? $_GET['redirect'] : null;
 
-    // mengalihkan ke dashboard jika sesi login aktif
-    if (isset($_SESSION['login']) && $_SESSION['login']) {
+    // mengalihkan ke halaman tertentu jika sesi login aktif
+    if (isset($_SESSION['login']) && $_SESSION['login'] && isset($_SESSION['user']) && !empty($_SESSION['user'])) {
+        $accType = $_SESSION['user']['type'];
+
         if (!empty($redirect)) header("location: $redirect");
-        else header('location: dashboard.php');
+        elseif ($accType === ACC_MHS) header("location: ./dashboard.php");
+        elseif ($accType === ACC_DOSEN) header("location: ./admin.php");
+        else header("location: ./index.php");
         exit;
     }
 
@@ -19,39 +24,78 @@
         $username = htmlspecialchars($_POST['username']);
         $password = htmlspecialchars($_POST['password']);
 
-        // mencari data dari tabel Mahasiswa menggunakan Primary Key (PK)
-        $queryRespons = $conn->query("SELECT * FROM Akun WHERE username='$username'");
+        $nextStep = true;
 
-        // jika ditemukan data dengan PK yang sesuai
-        if ($queryRespons && $queryRespons->num_rows === 1) {
-            $credential = $queryRespons->fetch_assoc();
+        // validasi password
+        if ($nextStep) {
+            try {
+                $credentials = query_statement($conn, "SELECT password FROM Akun WHERE username = ?", 's', $username);
 
-            // verifikasi kata sandi
-            if (password_verify($password, $credential['password'])) {
-                $mhsResult = call_procedure($conn, "get_biodata_mhs('$username')");
-                $mhs = (sizeof($mhsResult)) ? $mhsResult[0] : null;
+                if (!$credentials) throw new mysqli_sql_exception(last_query_error($conn)['message']);
+                if ($credentials->num_rows !== 1) throw new mysqli_sql_exception('Accounts with this username is not found');
 
-                // jika kata sandi terverifikasi, membuat sesi login
-                $_SESSION['login'] = TRUE;
-                $_SESSION['user'] = array(
-                    'id' => $credential['username'],
-                    'name' => $mhs['nama']
-                );
+                $credentials = $credentials->fetch_assoc();
+                if (!password_verify($password, $credentials['password'])) $nextStep = false;
 
-                // mengarahkan ke halaman tertentu atau ke halaman dashboard
-                if (!empty($redirect)) header("location: $redirect");
-                else header('location: dashboard.php');
-                exit;
+            } catch (Exception $ex) {
+                $nextStep = false;
+                print_console($ex->__toString(), true);
             }
         }
 
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Login gagal! Username atau kata sandi tidak sesuai."
-        );
+        // mendapatkan data user
+        if ($nextStep) {
+            try {
+                $accType = query_statement($conn, "SELECT account_type(?)", 's', $username);
+                $accType = $accType->fetch_row()[0];
 
-        // jika terjadi error selain karena username / password yang salah (MySQL Error)
-        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
+                if ($accType == 0) throw new Exception('User data is not found');
+
+                $verifiedUser = null;
+                if ($accType == 1) {
+                    $verifiedUser = call_procedure($conn, "get_biodata_mhs('$username')");
+                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User data is not found');
+                    $verifiedUser = $verifiedUser[0];
+
+                    $_SESSION['user'] = array(
+                        'type' => ACC_MHS,
+                        'id' => $verifiedUser['nim'],
+                        'name' => $verifiedUser['nama']
+                    );
+                }
+                elseif ($accType == 2) {
+                    $verifiedUser = call_procedure($conn, "get_biodata_dosen('$username')");
+                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User data is not found');
+                    $verifiedUser = $verifiedUser[0];
+
+                    $_SESSION['user'] = array(
+                        'type' => ACC_DOSEN,
+                        'id' => $verifiedUser['kode_dosen'],
+                        'name' => $verifiedUser['nama']
+                    );
+                }
+
+                // login berhasil, membuat sesi login
+                $_SESSION['login'] = TRUE;
+
+                // mengarahkan ke halaman tertentu atau ke halaman beranda admin
+                if (!empty($redirect)) header("location: $redirect");
+                elseif ($accType == 1) header("location: ./dashboard.php");
+                elseif ($accType == 2) header("location: ./admin.php");
+                exit;
+
+            } catch (Exception $ex) {
+                $nextStep = false;
+                print_console($ex->__toString(), true);
+            }
+        }
+
+        if (!$nextStep) {
+            $_SESSION['alert'] = array(
+                'error' => TRUE,
+                'message' => "Login gagal! Username atau kata sandi tidak sesuai."
+            );
+        }
     }
 ?>
 <!DOCTYPE html>

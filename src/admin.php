@@ -1,99 +1,21 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
     require './includes/db-connect.php';
-
-    // mengimport user-defined functions
-    include './includes/function.php';
+    require './includes/constants.php';
+    require './includes/function.php';
 
     $redirect = (isset($_GET['redirect']) && !empty($_GET['redirect'])) ? $_GET['redirect'] : null;
     $urlOfThisPage = get_url_of_this_page();
 
-    // register
-    if (isset($_POST['register'])) {
-        $username = htmlspecialchars($_POST['username']);
-        $name = htmlspecialchars($_POST['name']);
-        $rootPassword = htmlspecialchars($_POST['root_password']);
-        $password = htmlspecialchars($_POST['password']);
-        $cpassword = htmlspecialchars($_POST['cpassword']);
-
-        $trueRoot = ($conn->query("SELECT password FROM Root WHERE id = 1"))->fetch_row()[0];
-
-        if ($password !== $cpassword) {
-            $_SESSION['alert'] = array(
-                'error' => TRUE,
-                'message' => "Konfirmasi Kata Sandi <b>tidak cocok</b> dengan Kata Sandi yang Anda buat!"
-            );
-
-        } elseif (!password_verify($rootPassword, $trueRoot)) {
-            $_SESSION['alert'] = array(
-                'error' => TRUE,
-                'message' => "Kata Sandi Root Salah!"
-            );
-
-        } else {
-            $password = password_hash($password, PASSWORD_BCRYPT);    // mengenkripsi password
-
-            // mengirimkan data ke tabel Dosen
-            $queryRespons = $conn->query("INSERT INTO Dosen (kode, nama, kata_sandi) VALUES ('$username', '$name', '$password')");
-
-            if ($queryRespons) {
-                $_SESSION['alert'] = array('error' => FALSE, 'message' => "Pendaftaran berhasil.");
-                header('location: ./admin.php');
-                exit;
-
-            } else {
-                $duplicatePKErr = 1062;
-                $_SESSION['alert'] = ($conn->errno === $duplicatePKErr) ? $_SESSION['alert'] = last_query_error($conn, "Username <b>$username</b> sudah terdaftar. Silahkan login menggunakan Username tersebut.") : last_query_error($conn);
-            }
-        }
-
-        header("location: $urlOfThisPage");
+    // cek tipe akun
+    if (isset($_SESSION['login']) && $_SESSION['user']['type'] !== ACC_DOSEN) {
+        header('location: ./index.php');
         exit;
     }
 
-
-    // login
-    if (isset($_POST['login'])) {
-        $username = htmlspecialchars($_POST['username']);
-        $password = htmlspecialchars($_POST['password']);
-
-        // mencari data dari tabel Dosen menggunakan Primary Key (PK)
-        $queryRespons = $conn->query("SELECT * FROM Dosen WHERE kode='$username'");
-
-        // jika ditemukan data dengan PK yang sesuai
-        if ($queryRespons && $queryRespons->num_rows === 1) {
-            $userData = $queryRespons->fetch_assoc();
-
-            // verifikasi kata sandi
-            if (password_verify($password, $userData['kata_sandi'])) {
-                // jika kata sandi terverifikasi, membuat sesi login
-                $_SESSION['admin'] = TRUE;
-                $_SESSION['credentials'] = array(
-                    'id' => $userData['kode'],
-                    'name' => $userData['nama']
-                );
-
-                // mengarahkan ke halaman tertentu atau ke halaman beranda admin
-                if (!empty($redirect)) header("location: $redirect");
-                else header('location: admin.php');
-                exit;
-            }
-        }
-
-        $_SESSION['alert'] = array(
-            'error' => TRUE,
-            'message' => "Login gagal! Username atau kata sandi tidak sesuai."
-        );
-
-        // jika terjadi error selain karena username / password yang salah (MySQL Error)
-        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
-    }
-
-
     // jika sesi admin aktif
-    if (isset($_SESSION['admin']) && $_SESSION['admin']) {
+    if (isset($_SESSION['login']) && $_SESSION['login']) {
         // mengambil daftar mata kuliah
         $listMatkul = call_procedure($conn, "daftar_matkul");
 
@@ -141,69 +63,16 @@
         endif;
     ?>
     <main class="container-md">
-        <?php if(isset($_GET['action']) && $_GET['action'] === 'register') : ?>
-            <header class="mb-4">
-                <h1>Daftar | Admin</h1>
-                <p>Halaman ini dirancang seolah-olah sebagai halaman dashboard dosen dimana dosen mengelola pertemuan, memberi materi, tugas, dan lainnya.</p>
-            </header>
-            <form action="" method="post">
-                <section class="mb-3">
-                    <label for="rootPassword" class="form-label">Kata Sandi Root</label>
-                    <input class="form-control" type="password" name="root_password" id="rootPassword" placeholder="Kata Sandi Panel Admin" required>
-                    <p class="form-text">Masukkan kata sandi yang sama dengan kata sandi untuk mengakses panel admin.</p>
-                </section>
-                <section class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Buat Username" pattern="[0-9]{4}" title="Masukkan 4 digit angka" required>
-                    <div class="form-text">Username harus terdiri dari 4 karakter angka (Contoh: 1234).</div>
-                </section>
-                <section class="mb-3">
-                    <label for="name" class="form-label">Nama</label>
-                    <input type="text" name="name" id="name" class="form-control" placeholder="Masukkan Nama Anda" required>
-                </section>
-                <section class="mb-3">
-                    <label for="password" class="form-label">Kata Sandi</label>
-                    <input class="form-control" type="password" name="password" id="password" placeholder="Buat Kata Sandi" required>
-                </section>
-                <section class="mb-4">
-                    <label for="cpassword" class="form-label">Konfirmasi Kata Sandi</label>
-                    <input class="form-control" type="password" name="cpassword" id="cpassword" placeholder="Ketik Ulang Kata Sandi" required>
-                </section>
-                <section class="mb-3 d-flex gap-2">
-                    <button id="register" type="submit" name="register" class="btn btn-primary d-flex flex-fill align-items-center justify-content-center gap-2">
-                        <span class="material-icons">login</span>
-                        <span>Dafter</span>
-                    </button>
-                </section>
-            </form>
-            <hr>
-            <a href="./admin.php" class="mt-3 btn btn-success d-flex align-items-center justify-content-center gap-2">
-                <span class="material-icons">arrow_back</span>
-                <span>Kembali</span>
-            </a>
-
-        <?php elseif (!isset($_SESSION['admin']) || !$_SESSION['admin']) : ?>
+        <?php if (!isset($_SESSION['login']) || !$_SESSION['login']) : ?>
             <header class="mb-4">
                 <h1>Masuk | Admin</h1>
                 <p>Halaman ini dirancang seolah-olah sebagai halaman dashboard dosen dimana dosen mengelola pertemuan, memberi materi, tugas, dan lainnya.</p>
             </header>
-            <form action="" method="post">
-                <section class="form-floating mb-3">
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Masukkan Username" required>
-                    <label for="username">Username</label>
-                </section>
-                <section class="form-floating mb-4">
-                    <input class="form-control" type="password" name="password" id="password" placeholder="Masukkan Kata Sandi" required>
-                    <label for="password">Kata Sandi</label>
-                </section>
-                <section class="mb-3 d-flex gap-2">
-                    <button id="login" type="submit" name="login" class="btn btn-primary d-flex flex-fill align-items-center justify-content-center gap-2">
-                        <span class="material-icons">login</span>
-                        <span>Masuk</span>
-                    </button>
-                </section>
-            </form>
-            <a href="./admin.php?action=register" class="mt-3 btn btn-secondary d-flex align-items-center justify-content-center gap-2">
+            <a href="./login.php" class="btn btn-primary d-flex flex-fill align-items-center justify-content-center gap-2">
+                <span class="material-icons">login</span>
+                <span>Masuk</span>
+            </a>
+            <a href="./admin/daftar.php" class="mt-3 btn btn-secondary d-flex align-items-center justify-content-center gap-2">
                 <span class="material-icons">person_add</span>
                 <span>Daftar</span>
             </a>
@@ -223,7 +92,7 @@
                     </a>
                 </div>
                 <p>Halaman ini dirancang seolah-olah sebagai halaman dashboard dosen dimana dosen mengelola pertemuan, memberi materi, tugas, dan lainnya.</p>
-                <p>Selamat datang, <b><?=$_SESSION['credentials']['name']?></b></p>
+                <p>Selamat datang, <b><?=$_SESSION['user']['name']?></b></p>
             </header>
             <section class="mb-5">
                 <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
@@ -268,7 +137,6 @@
             </section>
         <?php endif; ?>
     </main>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-p34f1UUtsS3wqzfto5wAAmdvj+osOnFyQFpp4Ua3gs/ZVWx6oOypYoCJhGGScy+8" crossorigin="anonymous"></script>
     <script>
         const matkulRows = document.querySelectorAll('.mata-kuliah');
