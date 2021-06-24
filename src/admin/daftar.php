@@ -1,11 +1,8 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
     require '../includes/db-connect.php';
-
-    // mengimport user-defined functions
-    include '../includes/function.php';
+    require '../includes/function.php';
 
     $redirect = (isset($_GET['redirect']) && !empty($_GET['redirect'])) ? $_GET['redirect'] : null;
     $urlOfThisPage = get_url_of_this_page();
@@ -29,7 +26,6 @@
         $kodePos = htmlspecialchars($_POST['kode_pos']);
         $latitude = (!empty($_POST['latitude'])) ? htmlspecialchars($_POST['latitude']) : null;
         $longitude = (!empty($_POST['longitude'])) ? htmlspecialchars($_POST['longitude']) : null;
-
         $rootPassword = htmlspecialchars($_POST['root_password']);
         $username = htmlspecialchars($_POST['username']);
         $password = htmlspecialchars($_POST['password']);
@@ -46,7 +42,7 @@
         // validasi kata sandi root
         if ($nextSteps) {
             try {
-                $rootPasswordResult = query_statement($conn, "SELECT `password` FROM Akun WHERE username = ?", 's', 'root');
+                $rootPasswordResult = $conn->query_statement("SELECT `password` FROM Akun WHERE username = ?", 's', 'root');
                 if ($rootPasswordResult->num_rows !== 1)
                     throw new Exception('Root Password is not found');
                 $trueRoot = $rootPasswordResult->fetch_row()[0];
@@ -67,7 +63,7 @@
 
             if ($checkUsername === false) {
                 $nextSteps = false;
-                print_console(last_query_error($conn)['message'], true);
+                print_console($conn->last_query_error()['message'], true);
 
             } elseif ($checkUsername->num_rows !== 0) {
                 $nextSteps = false;
@@ -79,9 +75,9 @@
         if ($nextSteps) {
             $password = password_hash($password, PASSWORD_BCRYPT);    // mengenkripsi password
             try {
-                $idAkun = get_valid_PK($conn, 'Akun', 'id', code_generator(12));
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
+                $idAkun = $conn->get_valid_PK('Akun', 'id', code_generator(12));
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
                     'sss', $idAkun, $username, $password
                 );
             } catch (Exception $ex) {
@@ -93,9 +89,9 @@
         // menambahkan data alamat
         if ($nextSteps) {
             try {
-                $kodeAlamat = get_valid_PK($conn, 'Alamat', 'kode', code_generator(9, 'ADR'));
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                $kodeAlamat = $conn->get_valid_PK('Alamat', 'kode', code_generator(9, 'ADR'));
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     'ssiissssidd', $kodeAlamat, $jalan, $rt, $rw, $desaKel, $kec, $kabKota, $provinsi, $kodePos, $latitude, $longitude
                 );
             } catch (Exception $ex) {
@@ -107,9 +103,8 @@
         // menambahkan data biodata
         if ($nextSteps) {
             try {
-                $kodeBiodata = get_valid_PK($conn, 'Biodata', 'kode',  code_generator(9, 'BIO'));
-                $nextSteps = query_statement(
-                    $conn,
+                $kodeBiodata = $conn->get_valid_PK('Biodata', 'kode',  code_generator(9, 'BIO'));
+                $nextSteps = $conn->query_statement(
                     "INSERT INTO Biodata (kode, nama, lk, tmpt_lahir, tgl_lahir, agama, alamat, telp, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     'ssissssss',
                     $kodeBiodata, $nama, $gender, $tmptLahir, $tglLahir, $agama, $kodeAlamat, $telp, $email
@@ -123,8 +118,8 @@
         // menambahkan data dosen
         if ($nextSteps) {
             try {
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Dosen (kode, akun, biodata) VALUES (?, ?, ?)",
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Dosen (kode, akun, biodata) VALUES (?, ?, ?)",
                     'sss', $username, $idAkun, $kodeBiodata
                 );
             } catch (Exception $ex) {

@@ -1,9 +1,10 @@
 <?php
+    require 'Database.php';
+
     $serverName = 'localhost';
     $username = 'root';
     $password = '';
 
-    $conn = mysqli_connect($serverName, $username, $password);
-
-    mysqli_select_db($conn, 'spotrpl') or die('Database tidak ditemukan');
+    $conn = new Database($serverName, $username, $password);
+    $conn->select_db('spotrpl') or die('Database tidak ditemukan');
 ?>

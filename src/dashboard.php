@@ -24,13 +24,11 @@
     $nim = $_SESSION['user']['id'];
 
     // mengambil daftar kelas yang dikontrak oleh user
-    $listKelas = call_procedure($conn, "daftar_kelas_saya('$nim')");
+    $listKelas = $conn->call_procedure("daftar_kelas_saya('$nim')");
 
     // memberikan respons jika terjadi error
-    if (last_query_error($conn)) {
-        $queryError = last_query_error($conn);
+    if ($queryError = $conn->last_query_error())
         print_console($queryError['message'], $queryError['error']);
-    }
 ?>
 <!DOCTYPE html>
 <html lang="en">

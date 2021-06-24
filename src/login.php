@@ -1,7 +1,6 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn) dan functions
     require './includes/db-connect.php';
     require './includes/function.php';
     require './includes/constants.php';
@@ -29,9 +28,9 @@
         // validasi password
         if ($nextStep) {
             try {
-                $credentials = query_statement($conn, "SELECT password FROM Akun WHERE username = ?", 's', $username);
+                $credentials = $conn->query_statement("SELECT password FROM Akun WHERE username = ?", 's', $username);
 
-                if (!$credentials) throw new mysqli_sql_exception(last_query_error($conn)['message']);
+                if (!$credentials) throw new mysqli_sql_exception($conn->last_query_error()['message']);
                 if ($credentials->num_rows !== 1) throw new mysqli_sql_exception('Accounts with this username is not found');
 
                 $credentials = $credentials->fetch_assoc();
@@ -46,15 +45,15 @@
         // mendapatkan data user
         if ($nextStep) {
             try {
-                $accType = query_statement($conn, "SELECT account_type(?)", 's', $username);
-                $accType = $accType->fetch_row()[0];
+                $accType = $conn->query_statement("SELECT account_type(?)", 's', $username);
+                $accType = (int)$accType->fetch_row()[0];
 
-                if ($accType == 0) throw new Exception('User data is not found');
+                if ($accType === ACC_NONE) throw new Exception('This username is not associated with any account');
 
                 $verifiedUser = null;
-                if ($accType == 1) {
-                    $verifiedUser = call_procedure($conn, "get_biodata_mhs('$username')");
-                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User data is not found');
+                if ($accType === ACC_MHS) {
+                    $verifiedUser = $conn->call_procedure("get_biodata_mhs('$username')");
+                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User personal data is not found');
                     $verifiedUser = $verifiedUser[0];
 
                     $_SESSION['user'] = array(
@@ -63,9 +62,9 @@
                         'name' => $verifiedUser['nama']
                     );
                 }
-                elseif ($accType == 2) {
-                    $verifiedUser = call_procedure($conn, "get_biodata_dosen('$username')");
-                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User data is not found');
+                elseif ($accType === ACC_DOSEN) {
+                    $verifiedUser = $conn->call_procedure("get_biodata_dosen('$username')");
+                    if (sizeof($verifiedUser) !== 1) throw new mysqli_sql_exception('User personal data is not found');
                     $verifiedUser = $verifiedUser[0];
 
                     $_SESSION['user'] = array(
@@ -80,8 +79,8 @@
 
                 // mengarahkan ke halaman tertentu atau ke halaman beranda admin
                 if (!empty($redirect)) header("location: $redirect");
-                elseif ($accType == 1) header("location: ./dashboard.php");
-                elseif ($accType == 2) header("location: ./admin.php");
+                elseif ($accType === ACC_MHS) header("location: ./dashboard.php");
+                elseif ($accType === ACC_DOSEN) header("location: ./admin.php");
                 exit;
 
             } catch (Exception $ex) {

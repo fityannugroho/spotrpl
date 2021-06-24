@@ -1,12 +1,9 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn)
     require './includes/db-connect.php';
-
-    // mengimport user-defined functions
+    include './includes/constants.php';
     include './includes/function.php';
-
 
     // mendapatkan url dari laman saat ini
     $urlOfThisPage = get_url_of_this_page();
@@ -18,34 +15,37 @@
         exit;
     }
 
+    // validasi hak akses
+    if ($_SESSION['user']['type'] !== ACC_MHS) {
+        header('location: ./index.php');
+        exit;
+    }
 
     $nim = $_SESSION['user']['id'];
 
     // mengambil data kelas
-    $listKls = call_procedure($conn, "available_class('$nim')");
-    if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
+    $listKls = $conn->call_procedure("available_class('$nim')");
+    if ($error = $conn->last_query_error()) $_SESSION['alert'] = $error;
 
 
     // handle form
     if (isset($_POST['kontrak_kls_baru'])) {
         $kodeKelas = htmlspecialchars($_POST['kode_kelas']);
-        $kodeKontrak = '';
-
-        // mencari kode yang belum terpakai
-        do {
-            $kodeKontrak = code_generator(5, 'KKS');
-            $checkPK = $conn->query("SELECT * FROM Kontrak_Kelas WHERE kode=$kodeKontrak");
-        } while ($checkPK !== FALSE && $checkPK->num_rows > 0);
 
         // menambahkan data kontrak kuliah
-        $insertRespon = $conn->query("INSERT INTO Kontrak_Kelas VALUES ('$kodeKontrak', '$nim', '$kodeKelas')");
+        try {
+            $kodeKontrak = $conn->get_valid_PK('Kontrak_Kelas', 'kode', code_generator(5, 'KKS'));
+            $insertRespon = $conn->query_statement("INSERT INTO Kontrak_Kelas VALUES (?, ?, ?)", 'sss', $kodeKontrak, $nim, $kodeKelas);
+        } catch (Exception $ex) {
+            print_console($ex->__toString(), true);
+        }
 
         if ($insertRespon) {
             header("location: ./dashboard.php");
             exit;
+        } else {
+            $_SESSION['alert'] = ['error' => true, 'message' => 'Kontrak kelas gagal dilakukan!'];
         }
-
-        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
     }
 
 

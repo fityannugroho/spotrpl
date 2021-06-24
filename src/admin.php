@@ -17,10 +17,11 @@
     // jika sesi admin aktif
     if (isset($_SESSION['login']) && $_SESSION['login']) {
         // mengambil daftar mata kuliah
-        $listMatkul = call_procedure($conn, "daftar_matkul");
+        $listMatkul = $conn->call_procedure("daftar_matkul");
 
         // memberikan respons jika terjadi error
-        if (last_query_error($conn)) $_SESSION['alert'] = last_query_error($conn);
+        if ($error = $conn->last_query_error())
+            $_SESSION['alert'] = $error;
     }
 
 

@@ -1,7 +1,7 @@
 <?php
     session_start();
 
-    // mengimport koneksi database ($conn) dan functions
+    // mengimport koneksi database dan functions
     require './includes/db-connect.php';
     require './includes/function.php';
 
@@ -43,7 +43,7 @@
         // jika terdapat MySQL error
         if ($result === false) {
             $nextSteps = false;
-            print_console(last_query_error($conn)['message'], true);
+            print_console($conn->last_query_error()['message'], true);
 
         } elseif ($result->num_rows !== 0) {
             // jika nim sudah terpakai
@@ -55,9 +55,9 @@
         // menambahkan data akun
         if ($nextSteps) {
             try {
-                $idAkun = get_valid_PK($conn, 'Akun', 'id', code_generator(12));
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
+                $idAkun = $conn->get_valid_PK('Akun', 'id', code_generator(12));
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Akun (`id`, `username`, `password`) VALUES (?, ?, ?)",
                     'sss', $idAkun, $nim, $password
                 );
             } catch (Exception $ex) {
@@ -69,9 +69,9 @@
         // menambahkan data alamat
         if ($nextSteps) {
             try {
-                $kodeAlamat = get_valid_PK($conn, 'Alamat', 'kode', code_generator(9, 'ADR'));
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                $kodeAlamat = $conn->get_valid_PK('Alamat', 'kode', code_generator(9, 'ADR'));
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Alamat (kode, jalan, rt, rw, desa_kel, kec, kab_kota, provinsi, kode_pos, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     'ssiissssidd', $kodeAlamat, $jalan, $rt, $rw, $desaKel, $kec, $kabKota, $provinsi, $kodePos, $latitude, $longitude
                 );
             } catch (Exception $ex) {
@@ -83,9 +83,9 @@
         // menambahkan data biodata
         if ($nextSteps) {
             try {
-                $kodeBiodata = get_valid_PK($conn, 'Biodata', 'kode',  code_generator(9, 'BIO'));
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Biodata (kode, nama, lk, tmpt_lahir, tgl_lahir, agama, alamat, telp, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                $kodeBiodata = $conn->get_valid_PK('Biodata', 'kode',  code_generator(9, 'BIO'));
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Biodata (kode, nama, lk, tmpt_lahir, tgl_lahir, agama, alamat, telp, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     'ssissssss', $kodeBiodata, $fullname, $gender, $tmptLahir, $tglLahir, $agama, $kodeAlamat, $telp, $email
                 );
             } catch (Exception $ex) {
@@ -97,8 +97,8 @@
         // menambahkan data mahasiswa
         if ($nextSteps) {
             try {
-                $nextSteps = query_statement(
-                    $conn, "INSERT INTO Mahasiswa (nim, akun, biodata) VALUES (?, ?, ?)",
+                $nextSteps = $conn->query_statement(
+                    "INSERT INTO Mahasiswa (nim, akun, biodata) VALUES (?, ?, ?)",
                     'sss', $nim, $idAkun, $kodeBiodata
                 );
             } catch (Exception $ex) {

@@ -1,9 +1,7 @@
 <?php
     session_start();
 
-    require './includes/db-connect.php';
     require './includes/constants.php';
-    require './includes/function.php';
 
     // mengecek apakah sesi login aktif
     if (isset($_SESSION['login']) && $_SESSION['login']) {
